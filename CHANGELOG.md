@@ -1,5 +1,10 @@
 # Changelog
 
+## v005
+
+- Add Exit Game to the pause menu and make Escape quit through the normal save-and-shutdown path.
+- Show the existing Start + Select controller menu shortcut in the menu.
+
 ## v004
 
 - Build and sign games on local storage before copying and verifying them on the destination, avoiding NAS metadata signing failures.

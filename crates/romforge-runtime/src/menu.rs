@@ -58,6 +58,8 @@ impl Menu {
             12
         } else if self.view == View::Shaders {
             crate::gpu::Shader::ALL.len()
+        } else if self.view == View::Main {
+            6
         } else {
             5
         };
@@ -98,7 +100,13 @@ impl Menu {
         let lw = w as f32 / scale;
         let lh = h as f32 / scale;
         let panel_w = 460u32.min(lw as u32);
-        let panel_h = if self.view == View::Keys { 324 } else { 218 };
+        let panel_h = if self.view == View::Keys {
+            324
+        } else if self.view == View::Main {
+            242
+        } else {
+            218
+        };
         let x = ((lw - panel_w as f32) / 2.0).max(0.0) as i32;
         let y = ((lh - panel_h as f32) / 2.0).max(0.0) as i32;
         canvas.set_draw_color(Color::RGB(17, 22, 35));
@@ -154,7 +162,7 @@ impl Menu {
         )?;
         canvas.set_draw_color(Color::RGB(168, 180, 201));
         canvas.draw_debug_text(
-            "F1 / Esc: resume    Enter: select",
+            "F1 or Start+Select: resume   Esc: exit",
             ((x + 20) as f32, (y + panel_h as i32 - 16) as f32),
         )?;
         canvas.set_scale(1.0, 1.0)?;
@@ -173,4 +181,20 @@ fn ascii(value: &str, limit: usize) -> String {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn exit_is_reachable_without_adding_save_slots() {
+        let mut menu = Menu::default();
+        menu.navigate(Action::Up);
+        assert_eq!(menu.selected, 5);
+        menu.navigate(Action::Down);
+        assert_eq!(menu.selected, 0);
+        menu.view = View::Save;
+        menu.navigate(Action::Up);
+        assert_eq!(menu.selected, 4);
+    }
 }

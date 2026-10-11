@@ -1,4 +1,4 @@
-# ROMForge — v004
+# ROMForge — v005
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
@@ -8,7 +8,7 @@ The downloadable app runs on Apple Silicon Macs and includes the builder/runtime
 
 Settings lives inside the main window. Folder choices and per-game cover overrides are saved in `~/Library/Application Support/ROMForge/builder.json`. Matching ignores common region/revision tags and punctuation, supports leading/trailing “The”, and uses the catalog's reviewed aliases. Multiple possible covers require selection. PNG, JPEG and ICNS covers can be previewed and overridden.
 
-Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v004`, `v004`.
+Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v005`, `v005`.
 
 **Current preview:** playable SNES apps on macOS Apple Silicon. Open `artifacts/ROMForge.app` and drop one `.sfc` or `.smc` ROM anywhere in its window to build automatically, or select a ROM and click **Build macOS app**. Drops use the current Game apps and Game icons folders, even for ROMs outside the library. Existing apps are preserved; choose another output folder to build a second copy. Wait for a running job before dropping another ROM. Open the output folder and double-click the generated game. `Launch ROMForge.command` rebuilds and opens the builder.
 
@@ -26,14 +26,14 @@ Place PNG, JPEG or ICNS icons in your icons folder (subfolders are searched). Ex
 | SNES L / R | Q / W |
 | Start / Select | Return / Right Shift |
 | Fullscreen / windowed | F11 (Fn+F11 if macOS uses the function key) |
-| Open / close paused menu | F1 (Fn+F1 on some Macs); Escape resumes |
+| Open / close paused menu | F1 (Fn+F1 on some Macs); controller Start + Select |
 | Close game | Command-Q or window close |
 
-The paused F1 menu has exactly five options: **Keybinds**, **Save State**, **Load State**, **Scanlines**, and **Fullscreen / Windowed**. It uses SDL's built-in pixel font; no font files or font-renderer dependencies are added. Scanlines defaults to CRT-Lottes, fullscreen defaults on, and each game's settings persist. In **Scanlines**, choose **Off** or **CRT-Lottes**, then Enter/Circle to apply. Wait for `[Active]`, then F1/Escape to resume. CRT-Lottes is translated from the pinned upstream source during development and embedded in the runtime; no downloads or RetroArch installation are needed. Switching is immediate, and the menu stays sharp and unfiltered.
+The paused F1 menu has six options: **Keybinds**, **Save State**, **Load State**, **Scanlines**, **Fullscreen / Windowed**, and **Exit Game**. It uses SDL's built-in pixel font; no font files or font-renderer dependencies are added. Scanlines defaults to CRT-Lottes, fullscreen defaults on, and each game's settings persist. In **Scanlines**, choose **Off** or **CRT-Lottes**, then Enter/Circle to apply. Wait for `[Active]`, then F1 to resume. CRT-Lottes is translated from the pinned upstream source during development and embedded in the runtime; no downloads or RetroArch installation are needed. Switching is immediate, and the menu stays sharp and unfiltered.
 
 For a PS5 DualSense, Cross/Circle/Square/Triangle map to SNES B/A/Y/X; Options is Start, Create is Select, and L1/R1 are L/R. Use the D-pad or left stick to move. **Create + Options** toggles the menu. Within it, D-pad/left stick navigate, Circle (Nintendo A) selects, and Cross (Nintendo B) goes back. The game window must have focus; switching away pauses gameplay and audio. Controllers can connect after launch.
 
-In **Keybinds**, Left/Right switches keyboard/controller bindings. Select a SNES control and press Enter/Circle, then press its new key/button or move a controller axis. Assigning a binding already in use swaps the two controls. F1, Escape, F11, and the controller menu shortcut remain reserved. Backspace goes back; F1/Escape closes the menu, including during capture. Five state slots are available per ROM. Saving replaces the chosen slot; loading checks the ROM, core version, size, and checksum before restoring. Slots persist outside the app alongside battery saves.
+In **Keybinds**, Left/Right switches keyboard/controller bindings. Select a SNES control and press Enter/Circle, then press its new key/button or move a controller axis. Assigning a binding already in use swaps the two controls. F1, Escape, F11, and the controller menu shortcut remain reserved. Backspace goes back; F1 closes the menu, including during capture. Escape exits the game from gameplay or any menu, saving battery progress and settings. Five state slots are available per ROM. Saving replaces the chosen slot; loading checks the ROM, core version, size, and checksum before restoring. Slots persist outside the app alongside battery saves.
 
 Windows/Linux packaging, other consoles, and incremental rebuilds remain planned. Current builds are for local noncommercial development using the Snes9x license. Bluetooth DualSense menu/input response was confirmed by the user; broader controller and game compatibility still need testing.
 

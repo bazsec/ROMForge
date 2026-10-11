@@ -228,9 +228,7 @@ pub fn play(
                         repeat: false,
                         ..
                     } => {
-                        menu.open = false;
-                        menu.capturing = false;
-                        suppress_input = true;
+                        break 'game;
                     }
                     Event::KeyDown {
                         scancode: Some(key),
@@ -435,6 +433,7 @@ pub fn play(
                                     sdl.mouse().show_cursor(!fullscreen);
                                     settings.fullscreen = fullscreen;
                                 }
+                                5 => break 'game,
                                 _ => {}
                             },
                             View::Keys => {
@@ -564,6 +563,7 @@ pub fn play(
                         "Load State".into(),
                         format!("Scanlines ({})", chosen_shader.name()),
                         "Fullscreen / Windowed".into(),
+                        "Exit Game".into(),
                     ],
                     View::Keys => LABELS
                         .iter()
