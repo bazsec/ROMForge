@@ -1,5 +1,9 @@
 # Changelog
 
+## v006
+
+- Avoid a redundant 1024px upscaled icon representation when source artwork is 512px or smaller; retain standard icons through 512px.
+
 ## v005
 
 - Add Exit Game to the pause menu and make Escape quit through the normal save-and-shutdown path.

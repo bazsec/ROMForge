@@ -12,7 +12,7 @@ fn run(command: &mut Command) -> Result<String> {
     );
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
-/// Convert an existing PNG into all standard Retina/non-Retina ICNS sizes.
+/// Convert artwork into standard ICNS sizes without enlarging beyond its detail.
 /// The source image is never changed. Existing ICNS files can be copied directly.
 pub fn install(source: &Path, resources: &Path) -> Result<()> {
     ensure!(
@@ -74,8 +74,14 @@ pub fn install(source: &Path, resources: &Path) -> Result<()> {
     };
     let iconset = temp.path().join("Game.iconset");
     fs::create_dir(&iconset)?;
+    let source_pixels = if width.max(height) > 512 { 1024 } else { 512 };
     for size in [16, 32, 128, 256, 512] {
         for scale in [1, 2] {
+            // Keep the 512px representation for 512px artwork; a synthesized
+            // 1024px copy adds substantial size without adding image detail.
+            if size * scale > source_pixels {
+                continue;
+            }
             let pixels = (size * scale).to_string();
             let suffix = if scale == 2 { "@2x" } else { "" };
             run(Command::new("/usr/bin/sips")

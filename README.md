@@ -1,4 +1,4 @@
-# ROMForge — v005
+# ROMForge — v006
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
@@ -8,7 +8,7 @@ The downloadable app runs on Apple Silicon Macs and includes the builder/runtime
 
 Settings lives inside the main window. Folder choices and per-game cover overrides are saved in `~/Library/Application Support/ROMForge/builder.json`. Matching ignores common region/revision tags and punctuation, supports leading/trailing “The”, and uses the catalog's reviewed aliases. Multiple possible covers require selection. PNG, JPEG and ICNS covers can be previewed and overridden.
 
-Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v005`, `v005`.
+Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v006`, `v006`.
 
 **Current preview:** playable SNES apps on macOS Apple Silicon. Open `artifacts/ROMForge.app` and drop one `.sfc` or `.smc` ROM anywhere in its window to build automatically, or select a ROM and click **Build macOS app**. Drops use the current Game apps and Game icons folders, even for ROMs outside the library. Existing apps are preserved; choose another output folder to build a second copy. Wait for a running job before dropping another ROM. Open the output folder and double-click the generated game. `Launch ROMForge.command` rebuilds and opens the builder.
 
