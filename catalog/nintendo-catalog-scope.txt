@@ -1,0 +1,42 @@
+ROMForge Nintendo North American catalogs
+Prepared 2026-10-11
+
+These are working catalogs of original-era licensed North American releases,
+not Nintendo-certified definitive inventories or emulator compatibility lists.
+Source URLs appear on every row. Do not automatically delete unmatched ROMs or
+covers from these lists until the system's inventory has been reconciled.
+
+Additional systems in this batch:
+Game Boy: 507 entries (499 main-list games, 2 separately listed compilations,
+  6 utility cartridges including Game Boy Camera and the InfoGenius titles).
+Game Boy Color: 444 entries, including dual-mode cartridges. Dual-mode status
+  is recorded in Notes. These are not duplicated in the original Game Boy list
+  just because the same cartridge can also run on that system.
+Game Boy Advance: 949 entries from the main games baseline. At the user's
+  request, the 39 supplemental compilation and game/video cartridges were
+  removed. Do not add later repackaged multi-game cartridges. Original releases
+  already in the baseline, such as Namco Museum and Final Fantasy I & II: Dawn
+  of Souls, remain included. GBA Video-only cartridges and e-Reader cards remain
+  excluded. This is a working catalog, not a certified exhaustive inventory.
+Nintendo 64: 296 entries. The Japan-only 64DD and later aftermarket releases
+  are outside the scope.
+GameCube: 555 entries from the main games table, including full-game promotional
+  compilations in that table. The separate bonus/demo discs table is excluded.
+
+General exclusions: unlicensed/homebrew releases, prototypes, cancelled North
+American releases, post-lifespan aftermarket releases, Japan/PAL-only releases,
+and packaging-only variants. Regional reissues are not exhaustively itemized.
+"Game" in Release type follows the main source games table and can include a
+compilation. "Compilation" identifies a separately tabulated compilation, not
+an exhaustive classification of all multi-game products.
+
+Dates preserve the source precision (year, month, or full date). Historical
+sources sometimes disagree on shipment versus street dates. The catalogs are
+not independently verified against every cartridge or publisher record.
+
+Title preserves the catalog's North American name. Filename stem removes
+filesystem-reserved characters, changes ':' to ' -', changes '/' to ' + ', and
+moves a leading 'The' to ', The'. These are proposed names, not names verified
+against the user's files. Each system has unique case-insensitive filename
+stems. ROM and cover matching has not been performed. No user ROMs, icons, or
+running apps were modified by creating these catalogs.
