@@ -1,5 +1,9 @@
 # Changelog
 
+## v003
+
+- Move the cover preview beside the game title and compact the icon controls to save vertical space.
+
 ## v002
 
 - JPEG/JPG cover matching, previews and manual selection.

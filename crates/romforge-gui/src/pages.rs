@@ -27,13 +27,7 @@ impl Forge {
             .map(icons::Match::Found)
             .unwrap_or_else(|| self.icon_index.find(rom))
     }
-    pub fn cover_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &egui::Context,
-        rom: &std::path::Path,
-        busy: bool,
-    ) {
+    pub fn load_cover_preview(&mut self, ctx: &egui::Context, rom: &std::path::Path) {
         let matched = self.matched_icon(rom);
         let path = if let icons::Match::Found(path) = &matched {
             Some(path.clone())
@@ -83,9 +77,9 @@ impl Forge {
                 }
             }
         }
-        if let Some(texture) = &self.preview_texture {
-            ui.add(egui::Image::new(texture).max_size(egui::vec2(144.0, 144.0)));
-        }
+    }
+    pub fn cover_ui(&mut self, ui: &mut egui::Ui, rom: &std::path::Path, busy: bool) {
+        let matched = self.matched_icon(rom);
         match matched {
             icons::Match::Found(path) => {
                 ui.label(if self.overrides.contains_key(rom) {

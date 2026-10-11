@@ -734,17 +734,26 @@ impl eframe::App for Forge {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(20,22,27)).inner_margin(28)).show(ctx, |ui| {
             egui::ScrollArea::vertical().id_salt("workspace").show_branded(ui, |ui| {
-                ui.label(RichText::new("BUILD YOUR GAME").size(12.0).strong().color(amber));
-                ui.add_space(8.0);
                 if let Some(rom)=self.selected.and_then(|i| self.roms.get(i)).cloned() {
-                    ui.label(RichText::new(rom.file_stem().unwrap_or_default().to_string_lossy()).size(27.0).strong());
-                    let size=std::fs::metadata(&rom).map_or(0,|m|m.len());
-                    ui.label(RichText::new(format!("Super Nintendo   ·   {:.2} MB   ·   {}",size as f64/1_000_000.0,rom.extension().unwrap_or_default().to_string_lossy().to_uppercase())).color(muted));
+                    self.load_cover_preview(ctx, &rom);
+                    ui.horizontal(|ui| {
+                        if let Some(texture) = &self.preview_texture {
+                            ui.add(egui::Image::new(texture).max_size(egui::vec2(120.0, 120.0)));
+                            ui.add_space(10.0);
+                        }
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new("BUILD YOUR GAME").size(12.0).strong().color(amber));
+                            ui.add_space(8.0);
+                            ui.add(egui::Label::new(RichText::new(rom.file_stem().unwrap_or_default().to_string_lossy()).size(27.0).strong()).wrap());
+                            let size=std::fs::metadata(&rom).map_or(0,|m|m.len());
+                            ui.label(RichText::new(format!("Super Nintendo   ·   {:.2} MB   ·   {}",size as f64/1_000_000.0,rom.extension().unwrap_or_default().to_string_lossy().to_uppercase())).color(muted));
+                        });
+                    });
                     ui.add_space(14.0);
                     egui::Frame::new().fill(Color32::from_rgb(29,33,40)).corner_radius(12).inner_margin(18).show(ui,|ui| {
                         ui.set_min_width(ui.available_width());
                         ui.label(RichText::new("APPLICATION ICON").size(11.0).strong().color(muted));
-                        self.cover_ui(ui, ctx, &rom, busy);
+                        self.cover_ui(ui, &rom, busy);
                     });
                 } else {
                     ui.label(RichText::new("A new home for your classics.").size(27.0).strong());
