@@ -128,7 +128,7 @@ impl Forge {
             ui.horizontal_wrapped(|ui| {
                 if ui.button("Choose cover…").clicked()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Icons", &["png", "icns"])
+                        .add_filter("Icons", &["png", "jpg", "jpeg", "icns"])
                         .set_directory(&self.icons)
                         .pick_file()
                 {

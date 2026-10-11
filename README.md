@@ -1,4 +1,4 @@
-# ROMForge — v001
+# ROMForge — v002
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
@@ -6,7 +6,7 @@ A Rust desktop builder that packages user-provided retro ROMs as game applicatio
 
 The downloadable app runs on Apple Silicon Macs and includes the builder/runtime/core. No Rust, Xcode, or separate emulator installation is required to run it. It uses local ad-hoc signing and is not Apple-notarized; macOS may require Privacy & Security → Open Anyway after downloading. Intel Mac builds are not included.
 
-Settings lives inside the main window. Folder choices and per-game cover overrides are saved in `~/Library/Application Support/ROMForge/builder.json`. Matching ignores common region/revision tags and punctuation, supports leading/trailing “The”, and uses the catalog's reviewed aliases. Multiple possible covers require selection. PNG and ICNS covers can be previewed and overridden.
+Settings lives inside the main window. Folder choices and per-game cover overrides are saved in `~/Library/Application Support/ROMForge/builder.json`. Matching ignores common region/revision tags and punctuation, supports leading/trailing “The”, and uses the catalog's reviewed aliases. Multiple possible covers require selection. PNG, JPEG and ICNS covers can be previewed and overridden.
 
 Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v002`, `v003`.
 
@@ -16,7 +16,7 @@ Each game app includes its ROM and Snes9x core. SDL3 is statically linked; wgpu/
 
 **Create all** first previews the entire batch, showing ready games, existing outputs, missing covers and ambiguous matches. Confirm to build ready games; Cancel stops after the current game. It builds every ROM in the library (including subfolders and games hidden by search), one at a time. It uses the selected output and icon folders, skips existing app names, continues after individual failures, and reports created/skipped/failed totals with per-game activity details. ROMs with the same filename stem share an output name; subsequent copies are skipped once that app exists.
 
-Place PNG or ICNS icons in your icons folder (subfolders are searched). Exact filenames work: `Game.sfc` matches `Icons/Game.png`. The GUI detects this folder automatically, lets you choose another icons folder, and displays the selected ROM's match. Icons are embedded in the generated app for Finder and the Dock. If no icon matches, packaging uses the default application icon.
+Place PNG, JPEG or ICNS icons in your icons folder (subfolders are searched). Exact filenames work: `Game.sfc` matches `Icons/Game.png`. The GUI detects this folder automatically, lets you choose another icons folder, and displays the selected ROM's match. Icons are embedded in the generated app for Finder and the Dock. If no icon matches, packaging uses the default application icon.
 
 | Action | Keyboard |
 |---|---|

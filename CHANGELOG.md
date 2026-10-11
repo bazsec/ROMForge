@@ -1,5 +1,11 @@
 # Changelog
 
+## v002
+
+- JPEG/JPG cover matching, previews and manual selection.
+- JPEG-to-ICNS packaging alongside PNG and ICNS support.
+- A deterministic cover-formatting utility for centered, black-backed square artwork.
+
 ## v001
 
 - macOS Apple Silicon builder and fullscreen SNES game apps with controller support, F1 menu, save states and CRT-Lottes.

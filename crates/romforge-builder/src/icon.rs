@@ -36,7 +36,10 @@ pub fn install(source: &Path, resources: &Path) -> Result<()> {
         fs::write(destination, bytes)?;
         return Ok(());
     }
-    ensure!(extension == "png", "icons must be PNG or ICNS files");
+    ensure!(
+        matches!(extension.as_str(), "png" | "jpg" | "jpeg"),
+        "icons must be PNG, JPEG or ICNS files"
+    );
     let details = run(Command::new("/usr/bin/sips")
         .args(["-g", "pixelWidth", "-g", "pixelHeight"])
         .arg(source))?;
@@ -50,11 +53,11 @@ pub fn install(source: &Path, resources: &Path) -> Result<()> {
     let height = property("pixelHeight:").context("could not read icon height")?;
     ensure!(
         (16..=8192).contains(&width) && (16..=8192).contains(&height),
-        "PNG icon must be between 16 and 8192 pixels per side"
+        "Icon must be between 16 and 8192 pixels per side"
     );
     let temp = tempfile::tempdir()?;
     let padded = temp.path().join("padded.png");
-    let source = if width != height {
+    let source = if width != height || extension != "png" {
         let image = image::open(source)?.thumbnail(1024, 1024).to_rgba8();
         let side = image.width().max(image.height());
         let mut square = image::RgbaImage::new(side, side);

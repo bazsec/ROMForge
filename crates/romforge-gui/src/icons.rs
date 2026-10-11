@@ -104,7 +104,9 @@ impl Index {
                     dirs.push(path);
                 } else if kind.is_file()
                     && path.extension().and_then(|s| s.to_str()).is_some_and(|s| {
-                        s.eq_ignore_ascii_case("png") || s.eq_ignore_ascii_case("icns")
+                        ["png", "jpg", "jpeg", "icns"]
+                            .iter()
+                            .any(|ext| s.eq_ignore_ascii_case(ext))
                     })
                 {
                     index
@@ -155,7 +157,7 @@ impl Index {
         }
         paths.sort();
         paths.dedup();
-        // Prefer an ICNS only over its sibling PNG, never silently choose between covers.
+        // Prefer an ICNS only over its sibling image, never silently choose between covers.
         let icns: BTreeSet<_> = paths
             .iter()
             .filter(|p| {
@@ -165,8 +167,11 @@ impl Index {
             .map(|p| p.with_extension(""))
             .collect();
         paths.retain(|p| {
-            !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("png"))
-                || !icns.contains(&p.with_extension(""))
+            !p.extension().is_some_and(|e| {
+                ["png", "jpg", "jpeg"]
+                    .iter()
+                    .any(|ext| e.eq_ignore_ascii_case(ext))
+            }) || !icns.contains(&p.with_extension(""))
         });
         match paths.len() {
             0 => Match::Missing,
@@ -186,6 +191,20 @@ mod tests {
         );
         assert_ne!(key("Game (Special Edition)"), key("Game"));
         assert_ne!(key("Game 2"), key("Game"));
+    }
+    #[test]
+    fn matches_jpeg_and_prefers_prepared_sibling_icns() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Game.jpg"), []).unwrap();
+        assert_eq!(
+            Index::scan(dir.path()).find(Path::new("Game (USA).sfc")),
+            Match::Found(dir.path().join("Game.jpg"))
+        );
+        std::fs::write(dir.path().join("Game.icns"), []).unwrap();
+        assert_eq!(
+            Index::scan(dir.path()).find(Path::new("Game.sfc")),
+            Match::Found(dir.path().join("Game.icns"))
+        );
     }
     #[test]
     fn finds_nested_aliases_and_reports_conflicts() {
