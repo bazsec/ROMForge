@@ -3,7 +3,7 @@ set -eu
 ROOT="${0:A:h:h}"
 cd "$ROOT"
 export PATH="$ROOT/vendor/build-tools/bin:$HOME/.cargo/bin:$PATH"
-APP="$ROOT/artifacts/ROMForge.app"
+APP="${ROMFORGE_APP:-$ROOT/artifacts/ROMForge.app}"
 CORE="$ROOT/vendor/snes9x/libretro/snes9x_libretro.dylib"
 if [[ ! -f "$CORE" ]]; then
   print 'Build the development Snes9x core first; see docs/DEVELOPMENT.md.'
@@ -15,8 +15,8 @@ cargo build --release --workspace --locked
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp target/release/romforge-gui "$APP/Contents/MacOS/ROMForge"
 cp target/release/romforge-runtime target/release/romforge-builder "$APP/Contents/MacOS/"
-cp "$CORE" "$APP/Contents/Frameworks/"
-cp third-party/Snes9x-LICENSE.txt third-party/SDL-LICENSE.txt "$APP/Contents/Resources/"
+cp "$CORE" "$ROOT/vendor/nestopia/libretro/nestopia_libretro.dylib" "$APP/Contents/Frameworks/"
+cp third-party/Nestopia-NOTICES.txt third-party/Nestopia-LICENSE.txt third-party/Snes9x-LICENSE.txt third-party/SDL-LICENSE.txt "$APP/Contents/Resources/"
 rm -rf "$APP/Contents/Resources/shaders"
 cp -R assets/shaders "$APP/Contents/Resources/"
 cp assets/branding/ROMForge.icns "$APP/Contents/Resources/ROMForge.icns"
@@ -47,6 +47,7 @@ VERSION_NUMBER=$(python3 -c 'from pathlib import Path; print(int(Path("VERSION")
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION_NUMBER" "$APP/Contents/Info.plist"
 # Local ad-hoc signing only. This does not confer Developer ID or notarization.
 codesign --force --sign - "$APP/Contents/Frameworks/snes9x_libretro.dylib"
+codesign --force --sign - "$APP/Contents/Frameworks/nestopia_libretro.dylib"
 codesign --force --sign - "$APP/Contents/MacOS/romforge-runtime"
 codesign --force --sign - "$APP/Contents/MacOS/romforge-builder"
 codesign --force --sign - "$APP"

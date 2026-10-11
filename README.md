@@ -1,4 +1,4 @@
-# ROMForge — v007
+# ROMForge — v008
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
@@ -8,26 +8,30 @@ The downloadable app runs on Apple Silicon Macs and includes the builder/runtime
 
 Settings lives inside the main window. Folder choices and per-game cover overrides are saved in `~/Library/Application Support/ROMForge/builder.json`. Matching ignores common region/revision tags and punctuation, supports leading/trailing “The”, and uses the catalog's reviewed aliases. Multiple possible covers require selection. PNG, JPEG and ICNS covers can be previewed and overridden.
 
-Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v007`, `v007`.
+Settings → Check for updates reads public GitHub Releases. Install update and restart downloads the matching Apple Silicon ZIP, checks SHA-256 and bundle signing, stages beside the current app, then replaces it after exit. The previous app remains in the hidden staging folder for recovery. The app's containing folder must be writable. Folder preferences, ROMs, and saves are not replaced. Version tags increment `v001`, `v002`, `v003`, and so on.
 
-**Current preview:** playable SNES apps on macOS Apple Silicon. Open `artifacts/ROMForge.app` and drop one `.sfc` or `.smc` ROM anywhere in its window to build automatically, or select a ROM and click **Build macOS app**. Drops use the current Game apps and Game icons folders, even for ROMs outside the library. Existing apps are preserved; choose another output folder to build a second copy. Wait for a running job before dropping another ROM. Open the output folder and double-click the generated game. `Launch ROMForge.command` rebuilds and opens the builder.
+**Current preview:** playable NES and SNES apps on macOS Apple Silicon. Open `artifacts/ROMForge.app` and drop one `.nes`, `.sfc` or `.smc` ROM anywhere in its window to build automatically, or select a ROM and click **Build macOS app**. Drops use the current Game apps and Game icons folders, even for ROMs outside the library. Existing apps are preserved; choose another output folder to build a second copy. Wait for a running job before dropping another ROM. Open the output folder and double-click the generated game. `Launch ROMForge.command` rebuilds and opens the builder.
 
-Each game app includes its ROM and Snes9x core. SDL3 is statically linked; wgpu/Metal presents video and the embedded CRT-Lottes shader. No separate emulator installation, ROM picker, or runtime extraction is needed. Game apps open fullscreen by default, retain their aspect ratio, play audio, support a keyboard or SDL-compatible gamepad, and persist battery saves. They use local ad-hoc signatures, not Developer ID notarization.
+Each game app includes its ROM and the appropriate core (Nestopia for NES, Snes9x for SNES). SDL3 is statically linked; wgpu/Metal presents video and the embedded CRT-Lottes shader. No separate emulator installation, ROM picker, or runtime extraction is needed. Game apps open fullscreen by default, retain their aspect ratio, play audio, support a keyboard or SDL-compatible gamepad, and persist battery saves. They use local ad-hoc signatures, not Developer ID notarization.
 
-**Create all** first previews the entire batch, showing ready games, existing outputs, missing covers and ambiguous matches. Confirm to build ready games; Cancel stops after the current game. It builds every ROM in the library (including subfolders and games hidden by search), one at a time. It uses the selected output and icon folders, skips existing app names, continues after individual failures, and reports created/skipped/failed totals with per-game activity details. ROMs with the same filename stem share an output name; subsequent copies are skipped once that app exists.
+**Create all** first previews the entire batch, showing ready games, existing outputs, missing covers and ambiguous matches. Click **Start batch** in the footer to build ready games; Cancel stops after the current game. It builds every ROM in the library (including subfolders and games hidden by search), one at a time. It uses the selected output and icon folders, skips existing app names, continues after individual failures, and reports created/skipped/failed totals with per-game activity details. ROMs with the same filename stem share an output name; subsequent copies are skipped once that app exists.
+
+Library filters show **Missing cover**, **Not built**, and **Needs update**. Each new game records the ROMForge version and ROM/core hashes. Batch review can **Rebuild older apps**; replacement requires the same ROM and a successful launch check, and previous apps are retained in the output folder's hidden `.romforge-backups` directory. Older ROMForge apps without version records appear as legacy builds. Current/newer or unrecognized apps are preserved. Failed builds can be retried separately. Click the cover thumbnail for a larger preview and cover selection.
+
+NES support currently covers `.nes` cartridge images with standard gamepad input. Famicom Disk System, Zapper/light-gun and other specialty controllers are not exposed. NES validation uses an original diagnostic ROM; broad commercial-game compatibility testing remains pending. Nestopia's GPLv2 license is included, and its pinned corresponding source and build recipe accompany the release.
 
 Place PNG, JPEG or ICNS icons in your icons folder (subfolders are searched). Exact filenames work: `Game.sfc` matches `Icons/Game.png`. The GUI detects this folder automatically, lets you choose another icons folder, and displays the selected ROM's match. Icons are embedded in the generated app for Finder and the Dock. If no icon matches, packaging uses the default application icon.
 
 | Action | Keyboard |
 |---|---|
 | Move | Arrow keys |
-| SNES B / A | Z / X |
+| NES / SNES B / A | Z / X |
 | SNES Y / X | A / S |
 | SNES L / R | Q / W |
 | Start / Select | Return / Right Shift |
 | Fullscreen / windowed | F11 (Fn+F11 if macOS uses the function key) |
 | Open / close paused menu | F1 (Fn+F1 on some Macs); controller Start + Select |
-| Close game | Command-Q or window close |
+| Close game | Escape, Command-Q or window close |
 
 The paused F1 menu has six options: **Keybinds**, **Save State**, **Load State**, **Scanlines**, **Fullscreen / Windowed**, and **Exit Game**. It uses SDL's built-in pixel font; no font files or font-renderer dependencies are added. Scanlines defaults to CRT-Lottes, fullscreen defaults on, and each game's settings persist. In **Scanlines**, choose **Off** or **CRT-Lottes**, then Enter/Circle to apply. Wait for `[Active]`, then F1 to resume. CRT-Lottes is translated from the pinned upstream source during development and embedded in the runtime; no downloads or RetroArch installation are needed. Switching is immediate, and the menu stays sharp and unfiltered.
 
@@ -35,7 +39,7 @@ For a PS5 DualSense, Cross/Circle/Square/Triangle map to SNES B/A/Y/X; Options i
 
 In **Keybinds**, Left/Right switches keyboard/controller bindings. Select a SNES control and press Enter/Circle, then press its new key/button or move a controller axis. Assigning a binding already in use swaps the two controls. F1, Escape, F11, and the controller menu shortcut remain reserved. Backspace goes back; F1 closes the menu, including during capture. Escape exits the game from gameplay or any menu, saving battery progress and settings. Five state slots are available per ROM. Saving replaces the chosen slot; loading checks the ROM, core version, size, and checksum before restoring. Slots persist outside the app alongside battery saves.
 
-Windows/Linux packaging, other consoles, and incremental rebuilds remain planned. Current builds are for local noncommercial development using the Snes9x license. Bluetooth DualSense menu/input response was confirmed by the user; broader controller and game compatibility still need testing.
+Windows/Linux packaging and additional consoles remain planned. Current builds are for local noncommercial development using the Snes9x license. Bluetooth DualSense menu/input response was confirmed by the user; broader controller and game compatibility still need testing.
 
 - [Architecture and feasibility](docs/ARCHITECTURE.md)
 - [Implementation milestones](docs/PLAN.md)

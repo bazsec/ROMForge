@@ -2747,6 +2747,7 @@ dependencies = [
  "image",
  "include_dir",
  "romforge-format",
+ "serde_json",
  "sha2",
  "tempfile",
 ]
@@ -2776,6 +2777,7 @@ dependencies = [
  "eframe",
  "image",
  "rfd",
+ "romforge-format",
  "serde",
  "serde_json",
  "sha2",

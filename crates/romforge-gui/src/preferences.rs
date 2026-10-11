@@ -9,6 +9,9 @@ pub struct Preferences {
     pub overrides: BTreeMap<PathBuf, PathBuf>,
 }
 pub fn path() -> PathBuf {
+    if let Some(path) = std::env::var_os("ROMFORGE_PREFERENCES") {
+        return path.into();
+    }
     if cfg!(target_os = "macos") {
         PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
             .join("Library/Application Support/ROMForge/builder.json")

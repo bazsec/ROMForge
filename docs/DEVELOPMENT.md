@@ -22,6 +22,8 @@ git -C vendor/snes9x checkout fae2fea08f74180759ef540ee94259213f503480
 python3 scripts/build-snes9x-macos.py
 ```
 
+For NES, `scripts/build-nestopia-macos.sh` fetches the pinned Nestopia revision and builds the arm64 core with size optimization, LTO and the upstream `retro_*` export interface. No emulator features are removed. Both cores must exist before building the GUI bundle.
+
 ## Builder and game apps
 
 Open `artifacts/ROMForge.app`. To rebuild it, double-click `Launch ROMForge.command` or run `scripts/build-macos-app.sh`. Choose a ROM and **Build macOS app**, then open the generated app in the output folder. The app contains its ROM, core, licenses and runtime; it does not need the source workspace to run. The builder preview remembers its development workspace via a local resource file.
@@ -37,7 +39,7 @@ target/debug/romforge-builder --macos \
   'artifacts/Legend of Zelda, The - A Link to the Past.app'
 ```
 
-The output must not already exist. Choose a new directory/name for revised builds; automatic replacement and incremental caching are pending. Packaging stages the entire bundle in a temporary sibling directory, signs it locally, verifies it, then renames it into place. This is native macOS packaging, not cross-compilation or notarization.
+The output must not already exist. Choose a new directory/name for revised builds; the GUI batch review offers verified replacement of older builds with a matching ROM. Previous apps are retained in `.romforge-backups`. Packaging stages the entire bundle in a temporary sibling directory, signs it locally, verifies it, then renames it into place. This is native macOS packaging, not cross-compilation or notarization.
 
 ## Runtime diagnostics
 
@@ -66,7 +68,7 @@ The SRAM example tests write/read/reload in memory without touching player save 
 
 Packaged macOS apps use `<collection>/Save Games/<title> [<first 12 ROM SHA-256 characters>]/`. A full `rom.sha256` identity file prevents mismatches. Existing matching folders are reused after ROM renaming. Development binaries continue to use `~/Library/Application Support/ROMForge/games/<ROM SHA-256>/`. Packaged games copy legacy battery data, states, and settings on first launch, preserve originals, never overwrite destination saves, and mark completed migration to avoid resurrecting deleted slots. `battery.srm` holds the game's own battery save; `settings.json` stores fullscreen, selected CRT shader, and keyboard/controller bindings. Legacy `scanlines: true` migrates to CRT-Lottes unless a shader choice is present. `slot-1.state` through `slot-5.state` store snapshots with a versioned header, ROM/core hashes and a payload checksum. Snapshots from a different core binary are rejected. Writes are atomic, changed SRAM is flushed every five seconds and on exit, and an exclusive session lock prevents concurrent copies from racing. The folder is outside the bundle; move Save Games along with the apps when relocating the collection. The collection must be writable. Per-game and legacy session locks prevent concurrent save writers. Battery saves require the game's normal save action; they are not save states.
 
-Keyboard and gamepad mappings are in the README. The app pauses and clears queued audio when focus is lost. A connected gamepad uses positional face-button mapping (South=B, East=A, West=Y, North=X), D-pad or left stick, shoulders, Start and Back. F1 opens the five-option menu; Create + Options does the same on DualSense. Bindings are customizable in Keybinds and persist per ROM. SDL's built-in bitmap text supplies the menu font without another font dependency. Escape resumes gameplay; Command-Q/window close exits.
+Keyboard and gamepad mappings are in the README. The app pauses and clears queued audio when focus is lost. A connected gamepad uses positional face-button mapping (South=B, East=A, West=Y, North=X), D-pad or left stick, shoulders, Start and Back. F1 opens the six-option menu; Create + Options does the same on DualSense. Bindings are customizable in Keybinds and persist per ROM. SDL's built-in bitmap text supplies the menu font without another font dependency. Escape exits gameplay or the menu; Command-Q/window close exits.
 
 The original development overlay packager remains available with three positional arguments. Its output requires an external core and is for diagnostics only. Production macOS games use bundle resources rather than executable overlays.
 
@@ -130,3 +132,15 @@ Star Fox, Super Mario RPG, Mega Man X2, Super Metroid, and Donkey Kong Country.
 The size-focused build took more CPU time in this probe (about 1.2–2.5 seconds
 including hashing for those sequences on the test Mac). Full-game performance
 on older Macs remains unverified. Do not describe this as a speed optimization.
+
+## Isolated UI and NES checks
+
+Set `ROMFORGE_APP` to a separate absolute `.app` path when running the build script to avoid replacing an active builder. Set `ROMFORGE_PREFERENCES` to a separate JSON file when launching the GUI for isolated testing.
+
+```sh
+python3 scripts/make-nes-test-rom.py
+cargo run -p romforge-core --example check_nes -- vendor/nestopia/libretro/nestopia_libretro.dylib 'artifacts/nes-tests/NES Diagnostic.nes'
+cargo run -p romforge-core --example check_states -- vendor/nestopia/libretro/nestopia_libretro.dylib 'artifacts/nes-tests/NES Diagnostic.nes'
+```
+
+The NES diagnostic is original NROM code. It verifies A/B, Start/Select, all D-pad directions, button release and battery-memory reload. It is not a substitute for a mapper/game compatibility suite.

@@ -65,6 +65,7 @@ pub struct VideoFrame {
 }
 struct Host {
     format: u32,
+    system_directory: CString,
     video: VideoFrame,
     audio: Vec<i16>,
     buttons: u16,
@@ -76,6 +77,7 @@ impl Default for Host {
     fn default() -> Self {
         Self {
             format: 0,
+            system_directory: CString::new(".").unwrap(),
             video: VideoFrame {
                 width: 0,
                 height: 0,
@@ -106,6 +108,10 @@ unsafe extern "C" fn environment(command: u32, data: *mut c_void) -> bool {
                     *data.cast::<bool>() = true;
                     true
                 } // retain duplicate video frames
+                9 => {
+                    *data.cast::<*const c_char>() = host.system_directory.as_ptr();
+                    true
+                }
                 10 => {
                     let format = *data.cast::<u32>();
                     if format > 2 {
@@ -304,7 +310,26 @@ impl Session {
             loaded: false,
             _thread: PhantomData,
         };
-        HOST.with(|host| *host.borrow_mut() = Host::default());
+        let core_directory = std::fs::canonicalize(path)?
+            .parent()
+            .unwrap_or(Path::new("."))
+            .to_path_buf();
+        let resources = core_directory
+            .parent()
+            .unwrap_or(&core_directory)
+            .join("Resources");
+        let system_directory = if resources.is_dir() {
+            resources
+        } else {
+            core_directory
+        };
+        let system_directory = CString::new(system_directory.as_os_str().as_encoded_bytes())?;
+        HOST.with(|host| {
+            *host.borrow_mut() = Host {
+                system_directory,
+                ..Host::default()
+            }
+        });
         unsafe {
             let api = session
                 .library

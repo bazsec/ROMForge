@@ -20,11 +20,83 @@ pub enum Console {
     Genesis,
 }
 
+pub const VERSION: &str = include_str!("../../../VERSION");
+pub const BUILD_INFO: &str = "Contents/Resources/romforge-build.json";
+
+impl Console {
+    pub fn playable(extension: &str) -> Option<Self> {
+        match extension.to_ascii_lowercase().as_str() {
+            "nes" => Some(Self::Nes),
+            "sfc" | "smc" => Some(Self::Snes),
+            _ => None,
+        }
+    }
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Nes => "Nintendo Entertainment System",
+            Self::Snes => "Super Nintendo",
+            _ => "Unsupported console",
+        }
+    }
+    pub fn core_name(self) -> &'static str {
+        match self {
+            Self::Nes => "nestopia",
+            Self::Snes => "snes9x",
+            _ => "unsupported",
+        }
+    }
+    pub fn license_name(self) -> &'static str {
+        match self {
+            Self::Nes => "Nestopia-LICENSE.txt",
+            _ => "Snes9x-LICENSE.txt",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuildInfo {
+    pub version: String,
+    pub console: Console,
+    pub rom_sha256: String,
+    pub core_sha256: String,
+}
+
+pub fn version_number(version: &str) -> Option<u32> {
+    version.trim().strip_prefix('v')?.parse().ok()
+}
+
+fn valid_nes(rom: &[u8]) -> bool {
+    if rom.len() < 16 || !rom.starts_with(b"NES\x1a") {
+        return false;
+    }
+    let nes2 = rom[7] & 0x0c == 0x08;
+    let size = |low: u8, high: u8, unit: usize| -> Option<usize> {
+        if nes2 && high == 15 {
+            1usize
+                .checked_shl((low >> 2) as u32)?
+                .checked_mul(((low & 3) * 2 + 1) as usize)
+        } else {
+            ((low as usize) | if nes2 { (high as usize) << 8 } else { 0 }).checked_mul(unit)
+        }
+    };
+    let Some(prg) = size(rom[4], rom[9] & 15, 16384) else {
+        return false;
+    };
+    let Some(chr) = size(rom[5], rom[9] >> 4, 8192) else {
+        return false;
+    };
+    prg > 0
+        && prg
+            .checked_add(chr)
+            .and_then(|n| n.checked_add(16 + if rom[6] & 4 != 0 { 512 } else { 0 }))
+            .is_some_and(|n| n <= rom.len())
+}
+
 /// Extension detection is a candidate classification, never proof of validity.
 pub fn detect(extension: &str, rom: &[u8]) -> Result<Console> {
     ensure!(!rom.is_empty() && rom.len() <= MAX_ROM, "invalid ROM size");
     Ok(match extension.to_ascii_lowercase().as_str() {
-        "nes" if rom.len() >= 16 && rom.starts_with(b"NES\x1a") => Console::Nes,
+        "nes" if valid_nes(rom) => Console::Nes,
         "sfc" | "smc" if rom.len() >= 32768 && matches!(rom.len() % 1024, 0 | 512) => Console::Snes,
         "gb" if rom.len() >= 0x150 => Console::Gb,
         "gbc" if rom.len() >= 0x150 && rom[0x143] & 0x80 != 0 => Console::Gbc,
@@ -136,5 +208,22 @@ mod tests {
         assert!(read(Cursor::new(footer)).is_err());
         assert!(detect("nes", &[0; 32]).is_err());
         assert!(detect("bin", &[0; 32768]).is_err());
+    }
+    #[test]
+    fn nes_declared_sizes_and_trainers_must_fit() {
+        let mut rom = vec![0; 16 + 16384 + 8192];
+        rom[..4].copy_from_slice(b"NES\x1a");
+        rom[4] = 1;
+        rom[5] = 1;
+        assert_eq!(detect("nes", &rom).unwrap(), Console::Nes);
+        assert!(detect("nes", &rom[..rom.len() - 1]).is_err());
+        rom[6] = 4;
+        assert!(detect("nes", &rom).is_err());
+        rom.extend([0; 512]);
+        assert!(detect("nes", &rom).is_ok());
+        rom[7] = 8;
+        rom[9] = 0xff;
+        rom[4] = 0xfc;
+        assert!(detect("nes", &rom).is_err());
     }
 }

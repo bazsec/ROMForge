@@ -68,11 +68,6 @@ fn run() -> Result<()> {
         .parent()
         .and_then(|p| p.parent())
         .context("application directory missing")?;
-    let core = if let Some(path) = args.first() {
-        PathBuf::from(path)
-    } else {
-        contents.join("Frameworks/snes9x_libretro.dylib")
-    };
     let (rom, extension, console, title) = if args.len() == 2 {
         let path = PathBuf::from(&args[1]);
         ensure!(
@@ -97,14 +92,17 @@ fn run() -> Result<()> {
         let Payload { rom, metadata } = if args.is_empty() {
             romforge_format::read(File::open(payload_path)?)?
         } else {
-            romforge_format::read(File::open(exe)?)?
+            romforge_format::read(File::open(&exe)?)?
         };
         (rom, metadata.extension, metadata.console, metadata.title)
     };
     ensure!(
-        console == Console::Snes,
-        "initial runtime supports SNES only"
+        matches!(console, Console::Snes | Console::Nes),
+        "runtime supports NES and SNES"
     );
+    let core = args.first().map(PathBuf::from).unwrap_or_else(|| {
+        contents.join(format!("Frameworks/{}_libretro.dylib", console.core_name()))
+    });
     if headless {
         // SAFETY: the development command accepts a trusted native core explicitly.
         let mut session = unsafe { Session::load(&core, rom, &extension) }?;

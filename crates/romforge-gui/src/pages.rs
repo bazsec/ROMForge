@@ -1,6 +1,7 @@
 use super::*;
 impl Forge {
     pub fn refresh_icons(&mut self) {
+        self.library_dirty = true;
         self.icon_index = icons::Index::scan(&self.icons);
         self.indexed_folder = self.icons.clone();
         self.preview_path = None;
@@ -14,6 +15,7 @@ impl Forge {
             overrides: self.overrides.clone(),
         };
         if prefs != self.saved_preferences {
+            self.library_dirty = true;
             if let Err(e) = preferences::save(&prefs) {
                 self.log = format!("Could not save preferences: {e}");
             }
@@ -63,7 +65,7 @@ impl Forge {
                 };
                 match load() {
                     Ok(image) => {
-                        let image = image.thumbnail(256, 256).to_rgba8();
+                        let image = image.thumbnail(512, 512).to_rgba8();
                         self.preview_texture = Some(ctx.load_texture(
                             "cover-preview",
                             egui::ColorImage::from_rgba_unmultiplied(
@@ -242,42 +244,36 @@ impl Forge {
                 self.updates_ui(ui,ctx);
                 ui.separator();
                 ui.heading("How to use ROMForge");
-                ui.label("Choose a ROM folder to load .sfc and .smc games, including subfolders. Extract ZIP archives first. Select a game, check its cover, then Build macOS app. You can also drop one ROM into the library to build it immediately.");
-                ui.label("Create all opens a review of the entire library, including games hidden by search. Existing apps are preserved. Cancel stops after the current game. Every new app receives an automatic headless launch check.");
+                ui.label("Choose a ROM folder to load .nes, .sfc and .smc games, including subfolders. Extract ZIP archives first. Select a game, check its cover, then Build macOS app. You can also drop one ROM into the library to build it immediately.");
+                ui.label("Create all opens a review of the entire library, including games hidden by search. Existing apps are preserved unless you select Rebuild older apps; previous builds are retained in .romforge-backups. Cancel stops after the current game. Every new app receives an automatic headless launch check.");
                 ui.label("Cover matching searches subfolders, ignores region and revision tags, and uses the reviewed title aliases. Ambiguous matches need a manual selection. Refresh rescans both games and covers.");
                 if !self.icon_index.warnings.is_empty() { ui.colored_label(Color32::LIGHT_RED,format!("{} icon folders or entries could not be read.",self.icon_index.warnings.len())); for warning in &self.icon_index.warnings {ui.label(warning);} }
                 ui.separator(); ui.heading("Playing and saving");
                 ui.label("Games open fullscreen. F1 opens controls, save states and CRT settings; F11 toggles fullscreen. Focus the game window for controller input. Saves live in Save Games beside your game apps, with a separate folder per game. Keep this folder when moving your collection.");
                 ui.separator(); ui.heading("Personal use only");
                 ui.label("Use ROMForge only for personal use with ROMs you own and have permission to use. ROMForge does not provide ROMs. Do not distribute, upload, share or sell ROMs or generated apps containing ROMs. Owning a game does not grant redistribution rights.");
-                ui.label("Snes9x is provided under its noncommercial license. Third-party license notices are included with the app.");
+                ui.label("NES uses Nestopia (GPLv2); SNES uses Snes9x under its noncommercial license. Third-party license notices are included with the app.");
             });
         });
     }
     pub fn batch_page(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().frame(egui::Frame::new().inner_margin(28).fill(Color32::from_rgb(20,22,27))).show(ctx, |ui| {
             ui.heading("Review batch build");
-            let mut seen = std::collections::BTreeSet::new();
-            let mut ready = Vec::new(); let mut rows = Vec::new(); let (mut skipped,mut missing,mut blocked) = (0,0,0);
-            for rom in &self.roms {
-                let title = rom.file_stem().unwrap_or_default().to_string_lossy();
-                let destination = self.output.join(format!("{title}.app"));
-                let status = if destination.exists() || !seen.insert(title.to_lowercase()) { skipped += 1; "Skip — existing app or duplicate output name" }
-                else { match self.matched_icon(rom) {
-                    icons::Match::Ambiguous(_) => { blocked += 1; "Needs cover selection" }
-                    icons::Match::Found(path) if !path.is_file() => {blocked += 1; "Selected cover is missing"}
-                    icons::Match::Missing => {missing += 1; ready.push(rom.clone()); "Build — default icon"}
-                    _ => {ready.push(rom.clone()); "Build — cover matched"}
-                }};
-                rows.push((title.to_string(),status));
-            }
-            ui.label(format!("{} ready · {skipped} skipped · {missing} without covers · {blocked} need attention",ready.len()));
+            ui.label("Review the entire library, then use Start batch below.");
+            ui.add_enabled_ui(self.job.is_none(),|ui| {ui.checkbox(&mut self.rebuild_outdated,"Rebuild older apps (keep previous apps in .romforge-backups)");});
+            if self.library_job.is_some() || self.library_dirty {ui.spinner();ui.label("Checking covers and existing apps…");return;}
+            let ready=self.ready_roms().len();
+            let missing=self.entries.iter().filter(|e|e.cover_missing).count();
+            let blocked=self.entries.iter().filter(|e|e.blocked.is_some()).count();
+            ui.label(format!("{ready} ready · {} skipped · {missing} without covers · {blocked} need attention",self.entries.len().saturating_sub(ready+blocked)));
             ui.add(egui::Label::new(format!("Destination: {}",self.output.display())).wrap());
-            ui.label("Existing apps are never replaced. Resolve cover conflicts in the library or build only the ready games.");
-            if ui.add_enabled(self.job.is_none() && !ready.is_empty(),egui::Button::new(format!("Build {} ready games",ready.len())).fill(Color32::from_rgb(93,66,30))).clicked() { self.start_roms(ready,true,true); self.batch_preview=false; }
+            ui.label("Missing covers use the default icon. Cover conflicts are excluded. Existing apps from newer versions are preserved.");
             ui.separator();
             egui::ScrollArea::vertical().id_salt("batch-review").show_branded(ui, |ui| {
-                for (title,status) in rows { ui.label(RichText::new(title).strong()); ui.label(status); ui.separator(); }
+                for entry in &self.entries {
+                    ui.label(RichText::new(entry.rom.file_stem().unwrap_or_default().to_string_lossy()).strong());
+                    ui.label(entry.status(self.rebuild_outdated)); ui.separator();
+                }
             });
         });
     }

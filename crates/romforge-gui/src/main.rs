@@ -1,6 +1,8 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 mod batch;
+mod builds;
 mod icons;
+mod library;
 mod pages;
 mod preferences;
 mod rom_drop;
@@ -67,8 +69,8 @@ enum UpdateEvent {
 }
 
 enum JobEvent {
-    Progress(String),
-    Finished(String, String),
+    Progress(usize, usize, String),
+    Finished(batch::Report),
 }
 
 struct Forge {
@@ -77,6 +79,15 @@ struct Forge {
     wordmark_uv: egui::Rect,
     wordmark_size: egui::Vec2,
     search: String,
+    filter: library::Filter,
+    entries: Vec<library::Entry>,
+    library_dirty: bool,
+    library_job: Option<Receiver<Vec<library::Entry>>>,
+    rebuild_outdated: bool,
+    failed_roms: Vec<PathBuf>,
+    retry_replace: bool,
+    progress: (usize, usize),
+    cover_open: bool,
     settings_open: bool,
     batch_preview: bool,
     update_job: Option<Receiver<Result<UpdateEvent, String>>>,
@@ -221,6 +232,15 @@ impl Forge {
             wordmark_uv,
             wordmark_size,
             search: String::new(),
+            filter: Default::default(),
+            entries: Vec::new(),
+            library_dirty: true,
+            library_job: None,
+            rebuild_outdated: false,
+            failed_roms: Vec::new(),
+            retry_replace: false,
+            progress: (0, 0),
+            cover_open: false,
             settings_open: false,
             batch_preview: false,
             update_job: None,
@@ -266,6 +286,7 @@ impl Forge {
         app
     }
     fn scan(&mut self) {
+        self.library_dirty = true;
         self.roms.clear();
         self.selected = None;
         let mut dirs = vec![self.input.clone()];
@@ -291,7 +312,7 @@ impl Forge {
                                 .extension()
                                 .and_then(|s| s.to_str())
                                 .is_some_and(|s| {
-                                    matches!(s.to_ascii_lowercase().as_str(), "sfc" | "smc")
+                                    matches!(s.to_ascii_lowercase().as_str(), "nes" | "sfc" | "smc")
                                 })
                         {
                             self.roms.push(entry.path());
@@ -306,181 +327,13 @@ impl Forge {
             self.selected = Some(0);
         }
         self.status = if errors == 0 {
-            format!("{} SNES ROMs found", self.roms.len())
+            format!("{} ROMs found", self.roms.len())
         } else {
             format!(
-                "{} SNES ROMs found; {errors} folders or files could not be read",
+                "{} ROMs found; {errors} folders or files could not be read",
                 self.roms.len()
             )
         };
-    }
-    fn tools(&self) -> Result<(PathBuf, PathBuf, PathBuf), String> {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        let directory = exe.parent().ok_or("Application directory unavailable")?;
-        let suffix = std::env::consts::EXE_SUFFIX;
-        let runtime = directory.join(format!("romforge-runtime{suffix}"));
-        let builder = directory.join(format!("romforge-builder{suffix}"));
-        let core_name = if cfg!(target_os = "macos") {
-            "snes9x_libretro.dylib"
-        } else if cfg!(target_os = "windows") {
-            "snes9x_libretro.dll"
-        } else {
-            "snes9x_libretro.so"
-        };
-        let bundled = directory
-            .parent()
-            .unwrap_or(directory)
-            .join("Frameworks")
-            .join(core_name);
-        let core = if bundled.is_file() {
-            bundled
-        } else {
-            self.root.join("vendor/snes9x/libretro").join(core_name)
-        };
-        for path in [&runtime, &builder, &core] {
-            if !path.is_file() {
-                return Err(format!(
-                    "Missing {}. Run the development build instructions.",
-                    path.display()
-                ));
-            }
-        }
-        Ok((runtime, builder, core))
-    }
-    fn start(&mut self, package: bool) {
-        let Some(rom) = self.selected.and_then(|i| self.roms.get(i)).cloned() else {
-            return;
-        };
-        if package {
-            let stem = rom.file_stem().unwrap_or_default().to_string_lossy();
-            let destination = self.output.join(format!("{stem}.app"));
-            if destination.exists() {
-                self.status =
-                    "App already exists — open the output folder or choose another destination."
-                        .into();
-                self.log = format!("Existing app preserved: {}", destination.display());
-                return;
-            }
-        }
-        self.start_roms(vec![rom], package, false);
-    }
-    fn start_roms(&mut self, roms: Vec<PathBuf>, package: bool, all: bool) {
-        if self.job.is_some() || roms.is_empty() {
-            return;
-        }
-        let (runtime, builder, core) = match self.tools() {
-            Ok(t) => t,
-            Err(e) => {
-                self.status = "Missing development components".into();
-                self.log = e;
-                return;
-            }
-        };
-        let output_dir = self.output.clone();
-        let icon_index = self.icon_index.clone();
-        let overrides = self.overrides.clone();
-        self.cancel = Arc::new(AtomicBool::new(false));
-        self.batch_running = all;
-        let cancel = self.cancel.clone();
-        let resource_license = runtime
-            .parent()
-            .and_then(|p| p.parent())
-            .unwrap_or(&self.root)
-            .join("Resources/Snes9x-LICENSE.txt");
-        let license = if resource_license.is_file() {
-            resource_license
-        } else {
-            self.root.join("third-party/Snes9x-LICENSE.txt")
-        };
-        let (tx, rx) = mpsc::channel();
-        self.job = Some(rx);
-        self.status = if package {
-            "Building your macOS app…"
-        } else {
-            "Testing 120 frames…"
-        }
-        .into();
-        self.log.clear();
-        std::thread::spawn(move || {
-            let build = |rom: &PathBuf| -> Result<String, String> {
-                let mut log = String::new();
-                if package {
-                    std::fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-                    let stem = rom.file_stem().unwrap_or_default().to_string_lossy();
-                    let app = output_dir.join(format!("{stem}.app"));
-                    let icon = if let Some(path) = overrides.get(rom) {
-                        if !path.is_file() {
-                            return Err(format!("Selected icon is missing: {}", path.display()));
-                        }
-                        Some(path.clone())
-                    } else {
-                        match icon_index.find(rom) {
-                            icons::Match::Found(path) => Some(path),
-                            icons::Match::Missing => None,
-                            icons::Match::Ambiguous(_) => {
-                                return Err(
-                                    "Multiple covers match. Select a cover in the library first."
-                                        .into(),
-                                );
-                            }
-                        }
-                    };
-                    let mut command = Command::new(&builder);
-                    command
-                        .arg("--macos")
-                        .arg(&runtime)
-                        .arg(&core)
-                        .arg(&license)
-                        .arg(rom)
-                        .arg(&app);
-                    if let Some(icon) = icon {
-                        command.arg("--icon").arg(&icon);
-                        log.push_str(&format!("Icon: {}\n", icon.display()));
-                    }
-                    let output = command.output().map_err(|e| e.to_string())?;
-                    log.push_str(&String::from_utf8_lossy(&output.stdout));
-                    log.push_str(&String::from_utf8_lossy(&output.stderr));
-                    if !output.status.success() {
-                        return Err(log);
-                    }
-                    let check = Command::new(app.join("Contents/MacOS/Game"))
-                        .arg("--headless")
-                        .output()
-                        .map_err(|e| e.to_string())?;
-                    if !check.status.success() {
-                        return Err(format!(
-                            "App built, but its launch check failed: {}",
-                            String::from_utf8_lossy(&check.stderr)
-                        ));
-                    }
-                    log.push_str("\nLaunch check passed. Open the output folder and double-click your game.\nControls: arrows to move; Z/X = B/A, A/S = Y/X, Q/W = L/R, Return = Start, right Shift = Select. F1 opens the menu; F11 toggles fullscreen; Escape resumes from the menu.");
-                } else {
-                    let output = Command::new(&runtime)
-                        .arg("--headless")
-                        .arg(&core)
-                        .arg(rom)
-                        .output()
-                        .map_err(|e| e.to_string())?;
-                    log.push_str(&String::from_utf8_lossy(&output.stdout));
-                    log.push_str(&String::from_utf8_lossy(&output.stderr));
-                    if !output.status.success() {
-                        return Err(log);
-                    }
-                }
-                Ok(log)
-            };
-            let (status, log) = if all {
-                batch::run(&roms, &output_dir, &cancel, build, |status| {
-                    let _ = tx.send(JobEvent::Progress(status));
-                })
-            } else {
-                match build(&roms[0]) {
-                    Ok(log) => ("Completed successfully".into(), log),
-                    Err(error) => ("Could not complete — see details below".into(), error),
-                }
-            };
-            let _ = tx.send(JobEvent::Finished(status, log));
-        });
     }
 }
 impl eframe::App for Forge {
@@ -494,13 +347,17 @@ impl eframe::App for Forge {
         }
         if let Some(rx) = &self.job {
             match rx.try_recv() {
-                Ok(JobEvent::Progress(status)) => {
+                Ok(JobEvent::Progress(done, total, status)) => {
+                    self.progress = (done, total);
                     self.status = status;
                     ctx.request_repaint();
                 }
-                Ok(JobEvent::Finished(status, log)) => {
-                    self.log = log;
-                    self.status = status;
+                Ok(JobEvent::Finished(report)) => {
+                    self.status = report.summary();
+                    self.progress.0 = report.built + report.skipped + report.failed.len();
+                    self.log = report.log;
+                    self.failed_roms = report.failed;
+                    self.library_dirty = true;
                     self.job = None;
                 }
                 Err(mpsc::TryRecvError::Disconnected) => {
@@ -512,6 +369,7 @@ impl eframe::App for Forge {
                 }
             }
         }
+        self.poll_library(ctx);
         let dropped = ctx.input(|input| input.raw.dropped_files.clone());
         if !dropped.is_empty() {
             if self.job.is_some() {
@@ -526,6 +384,7 @@ impl eframe::App for Forge {
                             self.selected = Some(self.roms.len() - 1);
                         }
                         self.search.clear();
+                        self.library_dirty = true;
                         self.start(true);
                     }
                     Err(message) => self.status = message.into(),
@@ -570,7 +429,11 @@ impl eframe::App for Forge {
                                 self.settings_open = true;
                             }
                         }
-                        ui.label(RichText::new("macOS").size(12.0).color(amber));
+                        ui.label(
+                            RichText::new(format!("macOS · {}", updater::VERSION.trim()))
+                                .size(12.0)
+                                .color(amber),
+                        );
                     });
                 });
             });
@@ -582,12 +445,13 @@ impl eframe::App for Forge {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let ready = !busy && self.selected.is_some();
+                    let batch_roms = self.ready_roms();
+                    let ready = !busy && if self.batch_preview { !batch_roms.is_empty() } else { self.selected.is_some() };
                     if ui
                         .add_enabled(
                             ready && cfg!(target_os = "macos"),
                             egui::Button::new(
-                                RichText::new("Build macOS app")
+                                RichText::new(if self.batch_preview { "Start batch" } else { "Build macOS app" })
                                     .strong()
                                     .color(Color32::from_rgb(30, 24, 16)),
                             )
@@ -596,14 +460,18 @@ impl eframe::App for Forge {
                         )
                         .clicked()
                     {
-                        self.start(true);
+                        if self.batch_preview { self.start_roms(batch_roms, self.rebuild_outdated); self.batch_preview = false; }
+                        else { self.start(true); }
                     }
-                    if ui.add_enabled(
+                    if !self.batch_preview && ui.add_enabled(
                         !busy && !self.roms.is_empty() && cfg!(target_os = "macos"),
                         egui::Button::new(format!("Create all ({})", self.roms.len()))
                             .min_size(egui::vec2(160.0, 46.0)),
                     ).on_hover_text("Build the entire library, including games hidden by search. Existing apps are skipped.").clicked() {
-                        self.batch_preview = true; self.settings_open = false;
+                        self.batch_preview = true; self.settings_open = false; self.library_dirty = true;
+                    }
+                    if !busy && !self.failed_roms.is_empty() && ui.button(format!("Retry failed ({})", self.failed_roms.len())).clicked() {
+                        self.start_roms(self.failed_roms.clone(), self.retry_replace);
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.add(egui::Button::new("Open output folder").min_size(egui::vec2(160.0,46.0))).clicked()
@@ -620,6 +488,10 @@ impl eframe::App for Forge {
                         self.status = "Stopping after the current game finishes…".into();
                     }
                 });
+                if busy && self.progress.1 > 0 {
+                    ui.add(egui::ProgressBar::new(self.progress.0 as f32 / self.progress.1 as f32)
+                        .text(format!("{} / {} complete",self.progress.0,self.progress.1)));
+                }
                 if !self.log.is_empty() {
                     egui::CollapsingHeader::new("Activity details").show(ui, |ui| {
                         egui::ScrollArea::vertical()
@@ -692,6 +564,25 @@ impl eframe::App for Forge {
                     .truncate(),
                 )
                 .on_hover_text(self.input.display().to_string());
+                egui::ComboBox::from_id_salt("library-filter")
+                    .selected_text(self.filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in [
+                            library::Filter::All,
+                            library::Filter::MissingCover,
+                            library::Filter::NotBuilt,
+                            library::Filter::NeedsUpdate,
+                        ] {
+                            ui.selectable_value(&mut self.filter, filter, filter.label());
+                        }
+                    });
+                if self.library_job.is_some() {
+                    ui.label(
+                        RichText::new("Checking covers and builds…")
+                            .small()
+                            .color(muted),
+                    );
+                }
                 ui.separator();
                 let query = self.search.to_lowercase();
                 egui::ScrollArea::vertical()
@@ -701,7 +592,14 @@ impl eframe::App for Forge {
                         let mut shown = 0;
                         for (i, rom) in self.roms.iter().enumerate() {
                             let title = rom.file_stem().unwrap_or_default().to_string_lossy();
-                            if !title.to_lowercase().contains(&query) {
+                            if !title.to_lowercase().contains(&query)
+                                || (self.filter != library::Filter::All
+                                    && !self
+                                        .entries
+                                        .iter()
+                                        .find(|e| &e.rom == rom)
+                                        .is_some_and(|e| e.matches(self.filter)))
+                            {
                                 continue;
                             }
                             shown += 1;
@@ -725,9 +623,9 @@ impl eframe::App for Forge {
                         }
                         if shown == 0 {
                             ui.label(if self.roms.is_empty() {
-                                "Choose a folder with .sfc or .smc games to get started."
+                                "Choose a folder with .nes, .sfc or .smc games to get started."
                             } else {
-                                "No games match your search."
+                                "No games match your search and filter."
                             });
                         }
                     });
@@ -738,23 +636,32 @@ impl eframe::App for Forge {
                     self.load_cover_preview(ctx, &rom);
                     ui.horizontal(|ui| {
                         if let Some(texture) = &self.preview_texture {
-                            ui.add(egui::Image::new(texture).max_size(egui::vec2(120.0, 120.0)));
+                            if ui.add(egui::Image::new(texture).max_size(egui::vec2(120.0, 120.0)).sense(egui::Sense::click())).on_hover_text("View or change cover").clicked() {self.cover_open=true;}
                             ui.add_space(10.0);
                         }
                         ui.vertical(|ui| {
                             ui.label(RichText::new("BUILD YOUR GAME").size(12.0).strong().color(amber));
                             ui.add_space(8.0);
                             ui.add(egui::Label::new(RichText::new(rom.file_stem().unwrap_or_default().to_string_lossy()).size(27.0).strong()).wrap());
-                            let size=std::fs::metadata(&rom).map_or(0,|m|m.len());
-                            ui.label(RichText::new(format!("Super Nintendo   ·   {:.2} MB   ·   {}",size as f64/1_000_000.0,rom.extension().unwrap_or_default().to_string_lossy().to_uppercase())).color(muted));
+                            let size=self.entries.iter().find(|e|e.rom==rom).map_or(0,|e|e.size);
+                            let console=library::console(&rom).map_or("Unknown console",|c|c.name());
+                            ui.label(RichText::new(format!("{console}   ·   {:.2} MB   ·   {}",size as f64/1_000_000.0,rom.extension().unwrap_or_default().to_string_lossy().to_uppercase())).color(muted));
                         });
                     });
                     ui.add_space(14.0);
-                    egui::Frame::new().fill(Color32::from_rgb(29,33,40)).corner_radius(12).inner_margin(18).show(ui,|ui| {
-                        ui.set_min_width(ui.available_width());
-                        ui.label(RichText::new("APPLICATION ICON").size(11.0).strong().color(muted));
-                        self.cover_ui(ui, &rom, busy);
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new(if self.preview_texture.is_some() {"Cover matched"} else {"No cover preview"}).small().color(muted));
+                        if ui.button("View / change cover…").clicked() {self.cover_open=true;}
                     });
+                    if let Some(entry)=self.entries.iter().find(|e|e.rom==rom) {ui.label(RichText::new(entry.status(false)).small().color(muted));}
+                    if self.cover_open {
+                        let mut open=true;
+                        egui::Window::new("Game cover").open(&mut open).resizable(false).show(ctx, |ui| {
+                            if let Some(texture)=&self.preview_texture {ui.add(egui::Image::new(texture).max_size(egui::vec2(360.0,360.0)));}
+                            self.cover_ui(ui,&rom,busy);
+                        });
+                        self.cover_open=open;
+                    }
                 } else {
                     ui.label(RichText::new("A new home for your classics.").size(27.0).strong());
                     ui.label("Select a game from the library to build its own app.");
@@ -795,7 +702,7 @@ impl eframe::App for Forge {
                 if busy {
                     "A job is running — drop your ROM after it finishes"
                 } else {
-                    "Drop one SNES ROM to create its app"
+                    "Drop one NES or SNES ROM to create its app"
                 },
                 egui::FontId::proportional(26.0),
                 amber,

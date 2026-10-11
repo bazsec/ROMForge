@@ -61,8 +61,8 @@ pub fn build(
         .to_owned();
     let console = detect(&extension, &rom)?;
     ensure!(
-        console == Console::Snes,
-        "playable template currently supports SNES only"
+        matches!(console, Console::Snes | Console::Nes),
+        "playable template supports NES and SNES"
     );
     let title = rom_path
         .file_stem()
@@ -73,7 +73,11 @@ pub fn build(
     let metadata = Metadata {
         title: title.clone(),
         console,
-        core_id: "snes9x-fae2fea08f74180759ef540ee94259213f503480".into(),
+        core_id: format!(
+            "{}-{:x}",
+            console.core_name(),
+            Sha256::digest(fs::read(core)?)
+        ),
         template_id: "wgpu-lottes-macos-v3".into(),
         extension,
     };
@@ -96,9 +100,16 @@ pub fn build(
     let game = contents.join("MacOS/Game");
     fs::copy(runtime, &game)?;
     fs::set_permissions(&game, fs::metadata(runtime)?.permissions())?;
-    let bundled_core = contents.join("Frameworks/snes9x_libretro.dylib");
+    let bundled_core = contents.join(format!("Frameworks/{}_libretro.dylib", console.core_name()));
     fs::copy(core, &bundled_core)?;
-    fs::copy(license, resources.join("Snes9x-LICENSE.txt"))?;
+    fs::copy(license, resources.join(console.license_name()))?;
+    if console == Console::Nes {
+        let notices = license
+            .parent()
+            .context("license directory missing")?
+            .join("Nestopia-NOTICES.txt");
+        fs::copy(notices, resources.join("Nestopia-NOTICES.txt"))?;
+    }
     // The builder's resources carry the SDL license alongside the core license.
     let sdl_license = license
         .parent()
@@ -109,9 +120,25 @@ pub fn build(
         "SDL-LICENSE.txt must be next to the core license"
     );
     fs::copy(sdl_license, resources.join("SDL-LICENSE.txt"))?;
+    let version = romforge_format::VERSION.trim();
+    let version_number =
+        romforge_format::version_number(version).context("invalid build version")?;
+    let info = romforge_format::BuildInfo {
+        version: version.into(),
+        console,
+        rom_sha256: id.clone(),
+        core_sha256: format!("{:x}", Sha256::digest(fs::read(core)?)),
+    };
+    fs::write(
+        bundle.join(romforge_format::BUILD_INFO),
+        serde_json::to_vec_pretty(&info)?,
+    )?;
     fs::write(
         resources.join("BUILD.txt"),
-        "ROMForge playable preview\nCore: https://github.com/libretro/snes9x/tree/fae2fea08f74180759ef540ee94259213f503480\nSDL 3.4.18 statically linked. Core is bundled, not extracted.\nLocal ad-hoc signature; not Developer ID signed or notarized.\nNoncommercial development use; see included licenses.\n",
+        format!(
+            "ROMForge {version}\nCore: {}\nSource and build instructions: https://github.com/bazsec/ROMForge\nSDL 3.4.18 statically linked. Core bundled, not extracted.\nLocal ad-hoc signature; not notarized. See included licenses.\n",
+            console.core_name()
+        ),
     )?;
     let mut payload = File::create(resources.join("game.romforge"))?;
     append(&mut payload, &metadata, &rom)?;
@@ -134,8 +161,8 @@ pub fn build(
 <key>CFBundleName</key><string>{title}</string>
 <key>CFBundleDisplayName</key><string>{title}</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.2.0</string>
-<key>CFBundleVersion</key><string>5</string>
+<key>CFBundleShortVersionString</key><string>0.0.{version_number}</string>
+<key>CFBundleVersion</key><string>{version_number}</string>
 {icon_plist}
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>"#
