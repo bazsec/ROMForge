@@ -1,0 +1,11 @@
+[package]
+name = "romforge-compile-shader"
+version = "0.1.0"
+edition = "2024"
+[workspace]
+[dependencies]
+anyhow = "1"
+librashader-reflect = { version = "=0.12.0", features = ["wgsl", "glslang", "glslang-in", "cross"] }
+librashader-preprocess = "=0.12.0"
+librashader-presets = "=0.12.0"
+librashader-pack = "=0.12.0"

@@ -1,0 +1,24 @@
+[package]
+name = "romforge-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+romforge-format = { path = "../romforge-format" }
+romforge-core = { path = "../romforge-core" }
+sdl3 = { version = "0.20.0", features = ["build-from-source-static", "raw-window-handle"] }
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+directories = "6"
+tempfile = "3"
+fs2 = "0.4"
+
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "metal", "dx12", "vulkan"] }
+
+pollster = "0.4"
+
+[dev-dependencies]
+librashader = { version = "0.12", default-features = false, features = ["runtime-wgpu", "presets"] }

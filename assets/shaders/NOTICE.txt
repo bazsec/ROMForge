@@ -1,0 +1,14 @@
+ROMForge CRT-Lottes preset
+
+Shader sources and lookup textures are from libretro/slang-shaders.
+The exact upstream revision and per-file hashes are recorded in SOURCES.json.
+Only dependencies of CRT-Lottes are included.
+Original source and copyright/license notices are retained in each file.
+CRT-Lottes is Timothy Lottes' shader port from Shadertoy;
+its source explicitly dedicates the shader to the public domain.
+
+CRT-Lottes is translated to WGSL during development and embedded in the runtime.
+The generator and GPU equivalence test use librashader 0.12.0 (MPL-2.0 option),
+https://github.com/SnowflakePowered/librashader/tree/librashader-v0.12.0
+The shipping renderer uses wgpu 30 (MIT OR Apache-2.0), https://github.com/gfx-rs/wgpu.
+See LICENSES. Original shader source and development-tool notices are retained.

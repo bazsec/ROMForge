@@ -1,0 +1,15 @@
+[package]
+name = "romforge-builder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+romforge-format = { path = "../romforge-format" }
+sha2.workspace = true
+tempfile = "3"
+
+include_dir = "0.7"
+
+image = { version = "0.25", default-features = false, features = ["png"] }

@@ -1,0 +1,3 @@
+Mode: built-in image generation (edit of romforge-logo.png)
+
+Edit this ROMForge logo into a macOS Dock application icon. Preserve the exact cartridge, amber anvil and pixel spark design and colors. Scale the cartridge down and center it on a premium slate-charcoal rounded-square tile with large smooth continuous macOS-style corners, subtle bevel and soft restrained lighting. Tile occupies about 88% of the square canvas, transparent outside the rounded tile. Cartridge fully contained with comfortable padding and distinctly visible tile around it. Front-on, no perspective, no text, no other objects. This is an app icon asset, not a mockup.

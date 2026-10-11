@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/libretro/slang-shaders",
+  "revision": "e1d75632a205c70f14a4cc947c46d5abb7b3f7f1",
+  "files": {
+    "crt/crt-lottes.slangp": "51bdf93aa6e3dd8605bf1c2b19af1f511672b53f3551d8de1041e02a7bbf9610",
+    "crt/shaders/crt-lottes.slang": "e382eec413c2acf5d03cce65d447347553032acf2e550826d0142a9c51d559ef"
+  }
+}

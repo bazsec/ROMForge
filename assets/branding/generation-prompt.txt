@@ -1,0 +1,3 @@
+Built-in image_gen; transparent background.
+
+Use case: logo-brand. Create a polished original logo mark for ROMForge, a desktop tool that turns retro game cartridges into standalone apps. A bold simple cartridge silhouette combined with a small forge spark, crafted geometric shapes with subtle pixel-step details, premium restrained retro-modern identity. Standalone square emblem only, no lettering, no mockup, no surrounding objects. Strong silhouette legible at small app-icon sizes. Transparent background. Suitable on a dark charcoal desktop interface. Crisp edges, minimal detail.
