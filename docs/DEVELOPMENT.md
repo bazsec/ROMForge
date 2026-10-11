@@ -19,7 +19,7 @@ Snes9x is used under its noncommercial development restrictions. Native files un
 ```sh
 git clone https://github.com/libretro/snes9x.git vendor/snes9x
 git -C vendor/snes9x checkout fae2fea08f74180759ef540ee94259213f503480
-make -C vendor/snes9x/libretro -j4 platform=osx
+python3 scripts/build-snes9x-macos.py
 ```
 
 ## Builder and game apps
@@ -101,3 +101,32 @@ Use `off` or `lottes`. Smoke mode counts actual presented frames only after the 
 Set the root `VERSION` file to the next integer tag (`v001`, `v002`, …). Run `zsh scripts/package-release.sh` on Apple Silicon with Xcode (including Icon Composer tools). This builds optimized binaries, removes the development workspace marker, collects third-party notices, verifies local signatures, and creates a ZIP plus SHA256SUMS.txt under artifacts/releases. Upload both to the matching public GitHub Release; the updater expects those exact asset names. Never include ROMs, covers, saves, or generated game apps.
 
 The builder's numeric bundle version follows VERSION. Developer ID signing and notarization are not configured. The first release is locally tested; a future-version replacement should also be verified on a disposable app copy before each release.
+
+
+### Size-optimized macOS core
+
+The core build script uses the pinned upstream source with `-Oz`, full LTO,
+limited public exports, dead-code removal, and local-symbol stripping. It keeps
+all emulation chips and features. SDL camera, native dialog, tray, and SDL GPU
+subsystems are disabled in the runtime; wgpu supplies GPU rendering. SDL window,
+audio, software rendering (menu), joystick, HID, haptics, and sensors remain.
+
+Use `cargo run --release -p romforge-core --example compare -- CORE ROM FRAMES
+STATE_OUT STATE_IN` for frame/audio fingerprints, save-state replay, and optional
+cross-build state loading. Each invocation loads one trusted core. The probe
+compares all video and audio samples, not just frame counts; its elapsed time
+includes hashing overhead and is not an isolated CPU benchmark.
+
+Validation on Apple Silicon: 717 catalog ROMs compared over 120 boot frames.
+716 passed matching video/audio, state replay, and original-to-new state loading.
+The Blues Brothers had identical initial output but the same replay mismatch in
+both original and optimized builds; this is a pre-existing limitation, not a
+clean save-state pass. Longer representative boot sequences also matched.
+This is regression sampling, not full gameplay coverage of every title.
+
+Seven representative 1,800-frame runs (30 seconds of emulated time) matched
+video/audio and original-build states: Super Mario World, Super Mario Kart,
+Star Fox, Super Mario RPG, Mega Man X2, Super Metroid, and Donkey Kong Country.
+The size-focused build took more CPU time in this probe (about 1.2–2.5 seconds
+including hashing for those sequences on the test Mac). Full-game performance
+on older Macs remains unverified. Do not describe this as a speed optimization.

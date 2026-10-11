@@ -2794,6 +2794,7 @@ dependencies = [
  "romforge-core",
  "romforge-format",
  "sdl3",
+ "sdl3-sys",
  "serde",
  "serde_json",
  "sha2",

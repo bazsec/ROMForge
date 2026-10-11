@@ -1,5 +1,11 @@
 # Changelog
 
+## v007
+
+- Reduce the runtime by excluding unused SDL camera, dialog, tray, and GPU subsystems; retain audio, windowing, controller support, menu rendering, and wgpu graphics.
+- Build Snes9x with size optimization, LTO, limited exports, and symbol stripping while keeping all emulation features.
+- Add a developer probe for video/audio comparisons and save-state compatibility.
+
 ## v006
 
 - Avoid a redundant 1024px upscaled icon representation when source artwork is 512px or smaller; retain standard icons through 512px.
