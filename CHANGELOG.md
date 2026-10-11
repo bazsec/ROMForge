@@ -1,5 +1,9 @@
 # Changelog
 
+## v004
+
+- Build and sign games on local storage before copying and verifying them on the destination, avoiding NAS metadata signing failures.
+
 ## v003
 
 - Move the cover preview beside the game title and compact the icon controls to save vertical space.

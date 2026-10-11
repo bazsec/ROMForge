@@ -82,9 +82,7 @@ pub fn build(
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
     fs::create_dir_all(parent)?;
-    let staging = tempfile::Builder::new()
-        .prefix(".romforge-")
-        .tempdir_in(parent)?;
+    let staging = tempfile::Builder::new().prefix(".romforge-").tempdir()?;
     let bundle = staging.path().join("Game.app");
     let contents = bundle.join("Contents");
     let resources = contents.join("Resources");
@@ -143,6 +141,16 @@ pub fn build(
 </dict></plist>"#
         ),
     )?;
+    // Sign on local storage; SMB can attach Finder metadata to newly copied files.
+    let clean = Command::new("/usr/bin/xattr")
+        .args(["-cr"])
+        .arg(&bundle)
+        .output()?;
+    ensure!(
+        clean.status.success(),
+        "could not clear staging metadata: {}",
+        String::from_utf8_lossy(&clean.stderr)
+    );
     sign(&bundled_core)?;
     sign(&game)?;
     sign(&bundle)?;
@@ -159,7 +167,64 @@ pub fn build(
         !output.exists(),
         "output appeared during build; refusing to replace it"
     );
-    fs::rename(&bundle, output)?;
+    // Copy the signed bundle without resource forks or extended attributes, then
+    // verify it on the destination volume before publishing its final name.
+    let delivery = tempfile::Builder::new()
+        .prefix(".romforge-")
+        .tempdir_in(parent)?;
+    let delivered = delivery.path().join("Game.app");
+    let copied = Command::new("/usr/bin/ditto")
+        .args(["--norsrc", "--noextattr", "--noacl"])
+        .arg(&bundle)
+        .arg(&delivered)
+        .output()?;
+    ensure!(
+        copied.status.success(),
+        "could not copy app to destination: {}",
+        String::from_utf8_lossy(&copied.stderr)
+    );
+    let cleaned = Command::new("/usr/bin/xattr")
+        .args(["-cr"])
+        .arg(&delivered)
+        .output()?;
+    ensure!(
+        cleaned.status.success(),
+        "could not clear destination metadata: {}",
+        String::from_utf8_lossy(&cleaned.stderr)
+    );
+    let verified = Command::new("/usr/bin/codesign")
+        .args(["--verify", "--deep", "--strict"])
+        .arg(&delivered)
+        .output()?;
+    ensure!(
+        verified.status.success(),
+        "destination signature verification failed: {}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
+    ensure!(
+        !output.exists(),
+        "output appeared during copy; refusing to replace it"
+    );
+    fs::rename(&delivered, output)?;
+    // SMB metadata can be refreshed when the bundle receives its final name.
+    let cleaned = Command::new("/usr/bin/xattr")
+        .args(["-cr"])
+        .arg(output)
+        .output()?;
+    ensure!(
+        cleaned.status.success(),
+        "could not clear final app metadata: {}",
+        String::from_utf8_lossy(&cleaned.stderr)
+    );
+    let verified = Command::new("/usr/bin/codesign")
+        .args(["--verify", "--deep", "--strict"])
+        .arg(output)
+        .output()?;
+    ensure!(
+        verified.status.success(),
+        "final app signature verification failed: {}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
     println!(
         "Created {}\nDouble-click the app to play. All game dependencies are inside the bundle.",
         output.display()
