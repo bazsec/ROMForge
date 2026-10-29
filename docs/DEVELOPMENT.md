@@ -166,6 +166,15 @@ Use `off` or `lottes`. Smoke mode counts actual presented frames only after the 
 
 ## Releases
 
+For v009 and later, update VERSION and CHANGELOG.md, commit, then push the matching
+version tag. The Release workflow checks Windows and macOS, builds optimized native
+downloads, tests packaged diagnostic games, audits archives, and publishes both ZIPs,
+the corresponding emulator source archive, and SHA256SUMS.txt only when both jobs pass.
+The Windows ZIP contains the builder and its dependencies; generated games are not
+release inputs. `scripts/package-windows-release.ps1` reproduces Windows packaging
+locally. `scripts/audit-release.py` rejects ROMs, game executables, saves and local
+workspace/preferences files in distribution archives.
+
 Set the root `VERSION` file to the next integer tag (`v001`, `v002`, …). Run `zsh scripts/package-release.sh` on Apple Silicon with Xcode (including Icon Composer tools). This builds optimized binaries, removes the development workspace marker, collects third-party notices, verifies local signatures, and creates a ZIP plus SHA256SUMS.txt under artifacts/releases. Upload both to the matching public GitHub Release; the updater expects those exact asset names. Never include ROMs, covers, saves, or generated game apps.
 
 The builder's numeric bundle version follows VERSION. Developer ID signing and notarization are not configured. The first release is locally tested; a future-version replacement should also be verified on a disposable app copy before each release.

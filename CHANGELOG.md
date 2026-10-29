@@ -1,5 +1,14 @@
 # Changelog
 
+## v009
+
+- Add native Windows x64 support with automatic host selection in the builder and batch workflow.
+- Build one standalone Windows game executable with its ROM, emulator core, artwork icon and notices embedded.
+- Remove private temporary cores on exit and clean abandoned runtime folders on the next launch while protecting running games.
+- Share the macOS-style portable Save Games layout and in-game configuration menu on Windows.
+- Add Windows build scripts, pinned native emulator builds, package checks and release downloads with checksums.
+- Keep Windows update installation manual; Linux packaging remains planned.
+
 ## v008
 
 - Show the release version beside macOS in the main window header.

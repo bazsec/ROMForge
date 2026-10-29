@@ -1,4 +1,4 @@
-# ROMForge — v008
+# ROMForge — v009
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
