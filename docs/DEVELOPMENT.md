@@ -2,6 +2,22 @@
 
 ## Windows development
 
+Windows releases provide both a per-user Inno Setup installer and the portable ZIP
+from identical payload files. The installer creates Start menu/optional desktop
+shortcuts using ROMForge branding, installs under LocalAppData/Programs/ROMForge,
+and registers an Installed Apps uninstall entry. It never recursively removes the
+application directory or deletes games, saves, or AppData preferences. Packaged
+Windows defaults resolve the Windows Documents known folder (including redirection)
+to Documents/ROMForge; existing saved folder choices take precedence.
+
+`scripts/build-windows-installer.ps1 -PayloadDir PATH` compiles an audited payload
+using Inno Setup 6.3+. Release packaging builds the ZIP and Setup EXE automatically.
+`scripts/test-windows-installer.ps1` runs only on a disposable GitHub Actions runner;
+it checks payload hashes, shortcuts, registration, same-version upgrades, uninstall,
+preserved user data, and a standalone game running after app removal. It is not a
+local-PC installation test. The GUI uses CREATE_NO_WINDOW for packaging, headless
+validation and update helpers, retaining piped output/error logs.
+
 Use Windows x64 with Rust's `x86_64-pc-windows-msvc` toolchain, Visual Studio
 2022 C++ Build Tools (Desktop development with C++, including a Windows SDK),
 and CMake. The script finds CMake bundled with Visual Studio when it is not on PATH.

@@ -176,7 +176,7 @@ impl Forge {
                     .tempdir_in(&output_dir)
                     .map_err(|e| e.to_string())?;
                 let app = staging.path().join(romforge_format::package_name(&title));
-                let mut command = Command::new(builder);
+                let mut command = crate::process::background(builder);
                 command
                     .arg(
                         romforge_format::native_package_flag()
@@ -199,7 +199,7 @@ impl Forge {
                 if !output.status.success() {
                     return Err(log);
                 }
-                let check = Command::new(romforge_format::game_executable(&app))
+                let check = crate::process::background(romforge_format::game_executable(&app))
                     .arg("--headless")
                     .output()
                     .map_err(|e| e.to_string())?;
@@ -211,10 +211,11 @@ impl Forge {
                 }
                 log.push_str(&publish(&app, &destination, replace, rom, |path| {
                     if cfg!(windows) {
-                        let check = Command::new(romforge_format::game_executable(path))
-                            .arg("--headless")
-                            .output()
-                            .map_err(|e| e.to_string())?;
+                        let check =
+                            crate::process::background(romforge_format::game_executable(path))
+                                .arg("--headless")
+                                .output()
+                                .map_err(|e| e.to_string())?;
                         return if check.status.success() {
                             Ok(())
                         } else {
@@ -228,7 +229,7 @@ impl Forge {
                         ("/usr/bin/xattr", vec!["-cr"]),
                         ("/usr/bin/codesign", vec!["--verify", "--deep", "--strict"]),
                     ] {
-                        let result = Command::new(command)
+                        let result = crate::process::background(command)
                             .args(args)
                             .arg(path)
                             .output()

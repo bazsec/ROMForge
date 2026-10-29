@@ -34,3 +34,8 @@ $archive = Join-Path $PWD "artifacts/releases/ROMForge-$version-Windows-x64.zip"
 if (Test-Path -LiteralPath $archive) { throw "Archive already exists: $archive" }
 Compress-Archive -LiteralPath $app -DestinationPath $archive -CompressionLevel Optimal
 Write-Host "Release: $archive"
+& "$PSScriptRoot/build-windows-installer.ps1" -PayloadDir $app -Version $version
+if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
+if ($env:GITHUB_ACTIONS -eq 'true') {
+    & "$PSScriptRoot/test-windows-installer.ps1" -Installer (Join-Path $PWD "artifacts/releases/ROMForge-$version-Windows-x64-Setup.exe") -PayloadDir $app -Version $version
+}

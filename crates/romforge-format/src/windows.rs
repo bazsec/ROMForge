@@ -1,6 +1,10 @@
 //! Windows executable resources. Inspect files as data, never execute them.
 use anyhow::{Context, Result, ensure};
-use std::{os::windows::ffi::OsStrExt, path::Path, ptr};
+use std::{
+    os::windows::ffi::{OsStrExt, OsStringExt},
+    path::{Path, PathBuf},
+    ptr,
+};
 use windows_sys::Win32::{Foundation::FreeLibrary, System::LibraryLoader::*};
 
 pub const PAYLOAD: u16 = 101;
@@ -11,6 +15,36 @@ pub const DATA: u16 = 10;
 pub const ICON: u16 = 3;
 pub const GROUP_ICON: u16 = 14;
 const MAX_RESOURCE: usize = 128 * 1024 * 1024;
+
+/// Resolve redirected/OneDrive Documents rather than placing user games in the installation.
+pub fn documents_directory() -> Result<PathBuf> {
+    use windows_sys::Win32::{
+        System::Com::CoTaskMemFree,
+        UI::Shell::{FOLDERID_Documents, KF_FLAG_DONT_VERIFY, SHGetKnownFolderPath},
+    };
+    let mut value = ptr::null_mut();
+    let result = unsafe {
+        SHGetKnownFolderPath(
+            &FOLDERID_Documents,
+            KF_FLAG_DONT_VERIFY as u32,
+            ptr::null_mut(),
+            &mut value,
+        )
+    };
+    ensure!(
+        result >= 0 && !value.is_null(),
+        "Documents folder unavailable"
+    );
+    let mut length = 0;
+    while unsafe { *value.add(length) } != 0 {
+        length += 1;
+    }
+    let path = PathBuf::from(std::ffi::OsString::from_wide(unsafe {
+        std::slice::from_raw_parts(value, length)
+    }));
+    unsafe { CoTaskMemFree(value.cast()) };
+    Ok(path)
+}
 
 fn wide(path: &Path) -> Result<Vec<u16>> {
     let mut value: Vec<u16> = path.as_os_str().encode_wide().collect();

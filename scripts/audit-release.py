@@ -20,6 +20,14 @@ def check(name):
     if path.suffix.lower() == '.dll' and path.name not in {'snes9x_libretro.dll', 'nestopia_libretro.dll'}:
         raise SystemExit(f'Unexpected DLL in archive: {name}')
 
+if len(sys.argv) == 3 and sys.argv[1] == '--directory':
+    root = Path(sys.argv[2])
+    for path in root.rglob('*'):
+        if path.is_file():
+            check(path.relative_to(root).as_posix())
+    print('Audited installer payload')
+    sys.exit(0)
+
 files = list(Path(sys.argv[1]).glob('*.zip')) + list(Path(sys.argv[1]).glob('*.tar.gz'))
 if not files:
     raise SystemExit('No release archives to audit')

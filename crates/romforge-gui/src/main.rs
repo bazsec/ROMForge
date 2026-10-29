@@ -5,6 +5,7 @@ mod icons;
 mod library;
 mod pages;
 mod preferences;
+mod process;
 mod rom_drop;
 mod updater;
 use eframe::egui::{self, Color32, RichText};
@@ -125,7 +126,12 @@ fn project_root() -> PathBuf {
             return PathBuf::from(root.trim());
         }
         if directory.join("Contents/Frameworks").is_dir() {
-            return directory.to_path_buf();
+            #[cfg(windows)]
+            if let Ok(documents) = romforge_format::windows::documents_directory() {
+                return documents.join("ROMForge");
+            }
+            return PathBuf::from(std::env::var_os("USERPROFILE").unwrap_or_default())
+                .join("ROMForge");
         }
     }
     if let Ok(exe) = std::env::current_exe()

@@ -1,5 +1,13 @@
 # Changelog
 
+## v010
+
+- Add a Windows installer with Start menu and optional desktop shortcuts, a ROMForge icon, and an Installed Apps uninstall entry.
+- Retain a portable Windows ZIP alongside the installer, built from the same application files.
+- Run batch packaging, launch checks and update helpers silently without opening foreground consoles; preserve captured logs.
+- Default packaged Windows apps to a writable Documents/ROMForge workspace, including redirected Documents folders, while retaining existing preferences.
+- Verify installer upgrades, shortcuts and uninstall behavior on an isolated Windows CI runner; keep user games, saves and preferences outside installer cleanup.
+
 ## v009
 
 - Add native Windows x64 support with automatic host selection in the builder and batch workflow.

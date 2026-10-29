@@ -1,4 +1,4 @@
-# ROMForge — v009
+# ROMForge — v010
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
@@ -10,6 +10,12 @@ from the checkout. This builds the pinned NES/SNES cores and native app, then op
 the builder. Rust stable, Visual Studio C++ Build Tools with a Windows SDK, and
 CMake are required for development; the generated games do not need these tools.
 See [Windows development](docs/DEVELOPMENT.md#windows-development).
+
+Windows downloads include an installer (`Windows-x64-Setup.exe`) and a portable ZIP.
+The installer adds Start menu access, an optional desktop shortcut, and an Installed
+Apps uninstall entry. Installations are per-user and upgrades retain preferences.
+Games and saves are separate from the installed app. Batch helpers run silently;
+their output appears in ROMForge's activity log without opening console windows.
 
 [Download the latest macOS build](https://github.com/bazsec/ROMForge/releases/latest).
 

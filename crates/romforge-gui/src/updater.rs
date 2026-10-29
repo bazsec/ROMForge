@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 pub const VERSION: &str = include_str!("../../../VERSION");
 const REPO: &str = "bazsec/ROMForge";
 #[derive(Clone, Deserialize)]
@@ -22,7 +22,7 @@ pub fn number(tag: &str) -> Option<u64> {
     value.parse().ok()
 }
 pub fn check() -> Result<Option<Release>, String> {
-    let result = Command::new("curl")
+    let result = crate::process::background("curl")
         .args([
             "--fail",
             "--silent",
@@ -56,7 +56,7 @@ pub fn check() -> Result<Option<Release>, String> {
     Ok((version > number(VERSION.trim()).unwrap_or(0)).then_some(release))
 }
 fn download(url: &str, path: &std::path::Path) -> Result<(), String> {
-    let status = Command::new("curl")
+    let status = crate::process::background("curl")
         .args([
             "--fail",
             "--silent",
@@ -139,7 +139,7 @@ pub fn prepare(release: &Release) -> Result<PathBuf, String> {
     if expected != actual {
         return Err("Update checksum did not match".into());
     }
-    let list = Command::new("unzip")
+    let list = crate::process::background("unzip")
         .arg("-Z1")
         .arg(&zip)
         .output()
@@ -151,7 +151,7 @@ pub fn prepare(release: &Release) -> Result<PathBuf, String> {
     {
         return Err("Unexpected update archive contents".into());
     }
-    let status = Command::new("ditto")
+    let status = crate::process::background("ditto")
         .args(["-x", "-k"])
         .arg(&zip)
         .arg(temp.path())
@@ -161,7 +161,7 @@ pub fn prepare(release: &Release) -> Result<PathBuf, String> {
     if !status.success() || !staged.join("Contents/MacOS/ROMForge").is_file() {
         return Err("Update extraction failed".into());
     }
-    if !Command::new("codesign")
+    if !crate::process::background("codesign")
         .args(["--verify", "--deep", "--strict"])
         .arg(&staged)
         .status()

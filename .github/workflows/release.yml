@@ -66,6 +66,7 @@ jobs:
           path: |
             artifacts/releases/*.zip
             artifacts/releases/*.tar.gz
+            artifacts/releases/*-Setup.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -90,8 +91,9 @@ jobs:
           test "$GITHUB_REF" = "refs/tags/$VERSION"
           python3 scripts/audit-release.py artifacts/releases
           test -f "artifacts/releases/ROMForge-$VERSION-Windows-x64.zip"
+          test -f "artifacts/releases/ROMForge-$VERSION-Windows-x64-Setup.exe"
           test -f "artifacts/releases/ROMForge-$VERSION-macOS-arm64.zip"
           test -f "artifacts/releases/ROMForge-$VERSION-emulator-sources.tar.gz"
-          (cd artifacts/releases && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
-          python3 -c "from pathlib import Path; text=Path('CHANGELOG.md').read_text(); version=Path('VERSION').read_text().strip(); notes=text.split('## '+version+'\n',1)[1].split('\n## ',1)[0].strip(); Path('release-notes.txt').write_text(notes+'\n\nDownloads: Windows x64 and macOS Apple Silicon. Extract the archive before launching. Windows builds are unsigned; macOS builds use local ad-hoc signing and are not notarized. No commercial ROMs or game artwork are included. Windows update installation is manual.\n')"
-          gh release create "$VERSION" artifacts/releases/*.zip artifacts/releases/*.tar.gz artifacts/releases/SHA256SUMS.txt --verify-tag --title "ROMForge $VERSION" --notes-file release-notes.txt --latest
+          (cd artifacts/releases && sha256sum *.zip *.tar.gz *-Setup.exe > SHA256SUMS.txt)
+          python3 -c "from pathlib import Path; text=Path('CHANGELOG.md').read_text(); version=Path('VERSION').read_text().strip(); notes=text.split('## '+version+'\n',1)[1].split('\n## ',1)[0].strip(); Path('release-notes.txt').write_text(notes+'\n\nDownloads: Windows x64 installer, Windows portable ZIP, and macOS Apple Silicon. Run the Windows Setup executable for Start menu shortcuts and uninstall support, or extract the portable ZIP. Windows builds are unsigned; macOS builds use local ad-hoc signing and are not notarized. No commercial ROMs or game artwork are included. Windows update installation is manual.\n')"
+          gh release create "$VERSION" artifacts/releases/*.zip artifacts/releases/*.tar.gz artifacts/releases/*-Setup.exe artifacts/releases/SHA256SUMS.txt --verify-tag --title "ROMForge $VERSION" --notes-file release-notes.txt --latest

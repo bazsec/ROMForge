@@ -51,7 +51,7 @@ impl Forge {
                         }
                         let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
                         let png = temp.path().join("preview.png");
-                        let result = Command::new("sips")
+                        let result = crate::process::background("sips")
                             .args(["-s", "format", "png"])
                             .arg(path)
                             .arg("--out")
@@ -185,7 +185,7 @@ impl Forge {
                             self.available_update = release;
                         }
                         Ok(UpdateEvent::Prepared(script)) => {
-                            match Command::new("sh").arg(script).spawn() {
+                            match crate::process::background("sh").arg(script).spawn() {
                                 Ok(_) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                                 Err(e) => self.update_status = e.to_string(),
                             }
