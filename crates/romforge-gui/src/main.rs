@@ -116,6 +116,18 @@ fn project_root() -> PathBuf {
     if let Some(root) = std::env::var_os("ROMFORGE_PROJECT") {
         return root.into();
     }
+    if cfg!(windows)
+        && let Ok(exe) = std::env::current_exe()
+        && let Some(directory) = exe.parent()
+    {
+        if let Ok(root) = std::fs::read_to_string(directory.join("Contents/Resources/project-root"))
+        {
+            return PathBuf::from(root.trim());
+        }
+        if directory.join("Contents/Frameworks").is_dir() {
+            return directory.to_path_buf();
+        }
+    }
     if let Ok(exe) = std::env::current_exe()
         && let Some(macos) = exe.parent()
         && let Some(contents) = macos.parent()
@@ -430,9 +442,13 @@ impl eframe::App for Forge {
                             }
                         }
                         ui.label(
-                            RichText::new(format!("macOS · {}", updater::VERSION.trim()))
-                                .size(12.0)
-                                .color(amber),
+                            RichText::new(format!(
+                                "{} · {}",
+                                std::env::consts::OS,
+                                updater::VERSION.trim()
+                            ))
+                            .size(12.0)
+                            .color(amber),
                         );
                     });
                 });
@@ -449,9 +465,9 @@ impl eframe::App for Forge {
                     let ready = !busy && if self.batch_preview { !batch_roms.is_empty() } else { self.selected.is_some() };
                     if ui
                         .add_enabled(
-                            ready && cfg!(target_os = "macos"),
+                            ready && romforge_format::native_package_flag().is_some(),
                             egui::Button::new(
-                                RichText::new(if self.batch_preview { "Start batch" } else { "Build macOS app" })
+                                RichText::new(if self.batch_preview { "Start batch" } else if cfg!(windows) { "Build Windows game" } else { "Build macOS app" })
                                     .strong()
                                     .color(Color32::from_rgb(30, 24, 16)),
                             )
@@ -464,7 +480,7 @@ impl eframe::App for Forge {
                         else { self.start(true); }
                     }
                     if !self.batch_preview && ui.add_enabled(
-                        !busy && !self.roms.is_empty() && cfg!(target_os = "macos"),
+                        !busy && !self.roms.is_empty() && romforge_format::native_package_flag().is_some(),
                         egui::Button::new(format!("Create all ({})", self.roms.len()))
                             .min_size(egui::vec2(160.0, 46.0)),
                     ).on_hover_text("Build the entire library, including games hidden by search. Existing apps are skipped.").clicked() {
@@ -475,7 +491,7 @@ impl eframe::App for Forge {
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.add(egui::Button::new("Open output folder").min_size(egui::vec2(160.0,46.0))).clicked()
-                            && let Err(error) = std::fs::create_dir_all(&self.output).and_then(|_| Command::new("open").arg(&self.output).spawn().map(|_| ())) { self.log = error.to_string(); }
+                            && let Err(error) = std::fs::create_dir_all(&self.output).and_then(|_| Command::new(if cfg!(windows) { "explorer.exe" } else { "open" }).arg(&self.output).spawn().map(|_| ())) { self.log = error.to_string(); }
                     });
                 });
                 ui.horizontal(|ui| {

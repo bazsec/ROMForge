@@ -1,6 +1,8 @@
 //! Development packager: appends a ROM to a same-host headless template.
 mod icon;
 mod macos;
+#[cfg(windows)]
+mod windows;
 use anyhow::{Context, Result, ensure};
 use romforge_format::{Metadata, append, detect};
 use std::{
@@ -9,7 +11,31 @@ use std::{
     path::PathBuf,
 };
 fn main() -> Result<()> {
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    if args.first().is_some_and(|s| s == "--native") {
+        args[0] = romforge_format::native_package_flag()
+            .context("Native packaging is currently supported on Windows and macOS")?
+            .into();
+    }
+    if args.first().is_some_and(|s| s == "--windows") {
+        #[cfg(not(windows))]
+        anyhow::bail!("Windows packaging requires a Windows host");
+        #[cfg(windows)]
+        {
+            ensure!(
+                args.len() == 6 || (args.len() == 8 && args[6] == "--icon"),
+                "usage: romforge-builder --windows RUNTIME.exe CORE.dll CORE_LICENSE ROM OUTPUT.exe [--icon IMAGE]"
+            );
+            return windows::build(
+                std::path::Path::new(&args[1]),
+                std::path::Path::new(&args[2]),
+                std::path::Path::new(&args[3]),
+                std::path::Path::new(&args[4]),
+                std::path::Path::new(&args[5]),
+                args.get(7).map(std::path::Path::new),
+            );
+        }
+    }
     if args.first().is_some_and(|s| s == "--macos") {
         ensure!(
             args.len() == 6 || (args.len() == 8 && args[6] == "--icon"),

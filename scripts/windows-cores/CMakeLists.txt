@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.21)
+cmake_policy(SET CMP0091 NEW)
+project(romforge_cores LANGUAGES C CXX)
+if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  message(FATAL_ERROR "Use a 64-bit MSVC toolchain")
+endif()
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+get_filename_component(ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+
+# The pinned upstream manifests are explicit source lists. Keep every emulator
+# chip/mapper and use the same libretro frontend, without building the desktop UI.
+foreach(CORE snes9x nestopia)
+  set(SOURCE "${ROOT}/vendor/${CORE}")
+  file(READ "${SOURCE}/libretro/Makefile.common" MANIFEST)
+  string(REGEX MATCHALL "\\$\\((CORE_DIR|LIBRETRO_COMM_DIR)\\)/[A-Za-z0-9_./-]+\\.(cpp|c)" FILES "${MANIFEST}")
+  set(SOURCES)
+  foreach(FILE IN LISTS FILES)
+    string(REPLACE "$(CORE_DIR)" "${SOURCE}" FILE "${FILE}")
+    string(REPLACE "$(LIBRETRO_COMM_DIR)" "${SOURCE}/libretro/libretro-common" FILE "${FILE}")
+    list(APPEND SOURCES "${FILE}")
+  endforeach()
+  list(REMOVE_DUPLICATES SOURCES)
+  add_library(${CORE}_libretro SHARED ${SOURCES})
+  target_include_directories(${CORE}_libretro PRIVATE "${SOURCE}" "${SOURCE}/source"
+    "${SOURCE}/libretro" "${SOURCE}/libretro/libretro-common/include"
+    "${SOURCE}/apu" "${SOURCE}/apu/bapu")
+  target_compile_definitions(${CORE}_libretro PRIVATE __LIBRETRO__ __WIN32__
+    __inline__=__inline _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+  target_compile_options(${CORE}_libretro PRIVATE /O1 /W0)
+  target_link_libraries(${CORE}_libretro PRIVATE crypt32 shlwapi ws2_32)
+  set_target_properties(${CORE}_libretro PROPERTIES PREFIX "" WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endforeach()
+target_compile_definitions(snes9x_libretro PRIVATE ALLOW_CPU_OVERCLOCK)
+target_compile_options(snes9x_libretro PRIVATE "/FI${CMAKE_CURRENT_LIST_DIR}/snes9x-linkage.h")
+target_compile_definitions(nestopia_libretro PRIVATE NST_NO_ZLIB)

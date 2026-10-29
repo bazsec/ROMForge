@@ -1,5 +1,71 @@
 # Development
 
+## Windows development
+
+Use Windows x64 with Rust's `x86_64-pc-windows-msvc` toolchain, Visual Studio
+2022 C++ Build Tools (Desktop development with C++, including a Windows SDK),
+and CMake. The script finds CMake bundled with Visual Studio when it is not on PATH.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-windows-app.ps1
+# Optional optimized build:
+powershell -ExecutionPolicy Bypass -File scripts/build-windows-app.ps1 -Release
+& ./artifacts/ROMForge-Windows/romforge-gui.exe
+```
+
+`Launch ROMForge.ps1` builds and opens the app. The build script fetches the same
+pinned Snes9x and Nestopia revisions as macOS and refuses modified source checkouts.
+The native CMake build consumes their explicit upstream source manifests, keeps
+all chips/mappers, and uses a small MSVC C/C++ data-linkage compatibility header.
+Rust, SDL and emulator cores use static C runtimes. Cores are loaded as native DLLs.
+Native code and packaged games must match the x64 app architecture.
+
+The UI selects native packaging automatically. A Windows build is one
+`Game Title.exe`, with its ROM, emulator DLL, build identity, notices and artwork
+embedded as PE resources. Copy that executable alone to launch on another PC.
+On launch the runtime verifies the ROM/core hashes, writes the bundled DLL into
+a private `%TEMP%/ROMForge/runtime/game-*` directory, and loads it. An exclusive
+lease protects each running game's directory. Normal exit removes it; the next
+game launch removes unlocked abandoned runtime directories after a crash. Startup
+cleanup and directory creation are serialized so concurrent games remain safe.
+Only marked direct child directories are eligible for cleanup; saves are separate.
+
+Saves live in `Save Games/<title> [ROM fingerprint]/` beside the `.exe` collection,
+matching macOS's layout outside `.app` bundles. Renaming the executable keeps the
+same save identity. Earlier Windows folder builds use the same location, so their
+existing saves and settings are reused. Move Save Games too when moving progress.
+Windows builder preferences live in `%APPDATA%/ROMForge/builder.json`.
+PNG/JPEG covers and PNG-containing ICNS previews work on Windows. Artwork is
+embedded as the Explorer executable icon at 16–256 pixels, preserving aspect ratio
+with transparent padding. Games without a matched cover use the ROMForge icon.
+`Game.exe --export-resources NEW_DIRECTORY` exports bundled licenses/shader sources.
+F1 opens the shared in-game menu for keybinds, five save/load slots, CRT scanlines,
+fullscreen/windowed mode and exit. Keyboard hints appear when no controller is connected.
+The CLI accepts `--native` in place of `--windows` or `--macos` to select the
+current host. The UI and builder share supported platforms and package paths;
+Linux is excluded until its packager is implemented.
+
+Automatic update installation remains macOS-only; Windows shows release links
+for manual updates. Windows binaries are unsigned. Linux packaging remains planned.
+
+```powershell
+& ./target/debug/romforge-builder.exe --windows `
+  ./target/debug/romforge-runtime.exe `
+  ./vendor/snes9x/libretro/snes9x_libretro.dll `
+  ./third-party/Snes9x-LICENSE.txt ./ROMs/Game.sfc ./artifacts/Game.exe
+& ./artifacts/Game.exe
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo fmt --all -- --check
+./scripts/test-windows.ps1 -SkipBuild
+# Also exercise a real window, GPU shader, audio, and portable saves:
+./scripts/test-windows.ps1 -SkipBuild -Smoke
+```
+
+Mac binaries and `.app` game bundles cannot run on Windows. Rebuild games from
+the original ROMs on the destination platform. Battery saves are portable;
+save states include the core hash and are rejected across different core binaries.
+
 Rust stable (minimum 1.88), a C/C++ toolchain, and CMake are required. SDL3 is built from the Cargo-pinned source and linked statically. On this host CMake 3.31.6 is installed in a workspace-local Python virtual environment:
 
 ```sh

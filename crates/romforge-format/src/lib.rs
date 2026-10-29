@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::{Read, Seek, SeekFrom, Write};
 
+#[cfg(windows)]
+pub mod windows;
+
 const MAGIC: &[u8; 8] = b"ROMFRG01";
 const FOOTER: u64 = 56;
 pub const MAX_ROM: usize = 64 * 1024 * 1024;
@@ -22,6 +25,52 @@ pub enum Console {
 
 pub const VERSION: &str = include_str!("../../../VERSION");
 pub const BUILD_INFO: &str = "Contents/Resources/romforge-build.json";
+
+/// Native game package paths, shared by the builder and library UI.
+pub fn native_package_flag() -> Option<&'static str> {
+    match std::env::consts::OS {
+        "windows" => Some("--windows"),
+        "macos" => Some("--macos"),
+        _ => None,
+    }
+}
+pub fn package_name(title: &str) -> String {
+    format!("{title}.{}", if cfg!(windows) { "exe" } else { "app" })
+}
+pub fn game_executable(package: &std::path::Path) -> std::path::PathBuf {
+    if cfg!(windows) {
+        package.to_path_buf()
+    } else {
+        package.join("Contents/MacOS/Game")
+    }
+}
+
+pub fn package_build_info(package: &std::path::Path) -> Result<BuildInfo> {
+    #[cfg(windows)]
+    if package.is_file() {
+        return Ok(serde_json::from_slice(&windows::read(
+            package,
+            windows::DATA,
+            windows::BUILD,
+        )?)?);
+    }
+    Ok(serde_json::from_slice(&std::fs::read(
+        package.join(BUILD_INFO),
+    )?)?)
+}
+pub fn package_payload(package: &std::path::Path) -> Result<Payload> {
+    #[cfg(windows)]
+    if package.is_file() {
+        return read(std::io::Cursor::new(windows::read(
+            package,
+            windows::DATA,
+            windows::PAYLOAD,
+        )?));
+    }
+    read(std::fs::File::open(
+        package.join("Contents/Resources/game.romforge"),
+    )?)
+}
 
 impl Console {
     pub fn playable(extension: &str) -> Option<Self> {

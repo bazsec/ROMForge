@@ -1,4 +1,65 @@
-# Validation — October 11, 2026
+# Windows validation — October 29, 2026
+
+## Standalone executable revision
+
+- Windows output is now one `Game Title.exe` with embedded ROM, emulator DLL,
+  build metadata, license/shader notices and six sizes of native icon resources.
+  Matched cover artwork supplies the icon; ROMForge artwork is the fallback.
+- Current workspace checks: 30 tests passed, one optional GPU reference test
+  ignored; formatting and Clippy with warnings denied passed.
+- Updated integration checks build NES and SNES executables, move only each `.exe`
+  into an isolated directory, run 120 headless frames, and export/verify embedded
+  notices. Native NES input/battery and both cores' state probes also passed.
+- The runtime checks embedded ROM/core hashes before loading a private temporary
+  DLL. Normal exits removed the DLL directory, leaving only the startup lock.
+  A subprocess test bypassed all Rust destructors; the next launch removed its
+  abandoned directory. A separate test confirmed active locked directories and
+  unrelated folders survive cleanup.
+- Built the user's Super Metroid locally with the matched JPEG artwork. Windows
+  shell icon extraction confirmed the embedded artwork is used. Its standalone
+  executable passed 120 headless frames. Earlier in this revision, it also booted
+  with the GPU and its F1 main/keybind menus were visually inspected. Final cleanup
+  and keyboard-hint refinements received background checks; full controller and
+  menu interaction testing remains user QA.
+- Save location is shared with the previous Windows folder build and mirrors the
+  Mac collection: `Save Games/<title> [ROM hash prefix]/`. Existing Super Metroid
+  battery data and settings remained in that directory. Executable renaming uses
+  the same ROM identity. Five state slots and per-ROM settings remain in the shared
+  runtime; cross-platform state files still require an identical core hash.
+
+macOS packaging is unchanged by the standalone Windows revision; local validation
+was performed on Windows. Rerun macOS CI before a release.
+
+## Initial Windows folder preview (superseded output format)
+
+Host: Windows x64, Rust 1.95.0, Visual Studio 2022 Build Tools, AMD Radeon RX
+7900 XT (wgpu Vulkan). Built both pinned native emulator DLLs from source.
+
+- Workspace tests: 27 passed; the optional upstream shader equivalence test remains
+  ignored. Formatting and Clippy with warnings denied passed.
+- `scripts/test-windows.ps1 -SkipBuild -Smoke` generated original NES and SNES
+  diagnostic ROMs, selected Windows packaging with `--native`, and built portable
+  game folders under a path containing spaces.
+- Both packaged `Game.exe` files ran 120 headless frames and presented 120 actual
+  CRT-Lottes frames with audio. Portable save/settings folders were created beside
+  the collection. No commercial ROMs were used or distributed.
+- NES A/B, Start/Select, D-pad, button release and battery reload checks passed.
+  Both cores passed state restoration, deterministic video replay, SRAM comparison
+  and invalid-state recovery probes. The blank SNES fixture has no cartridge SRAM.
+- Unit coverage includes Windows package payloads, core/resource placement,
+  refusal to overwrite existing output, failed-build cleanup, portable save paths,
+  and ICNS PNG preview/truncation handling.
+- `dumpbin /dependents` showed no Visual C++ runtime DLL dependency in the shipped
+  GUI/runtime or either emulator DLL. Windows GUI startup was confirmed.
+
+Limits: diagnostic fixtures establish native startup and integration, not broad
+gameplay/controller compatibility. Windows games are portable folders, not single
+standalone executables. Selected cover artwork is retained but not embedded into
+the executable's Explorer icon. Windows automatic updating and Linux packaging
+are not implemented. macOS validation below predates this Windows change; rerun
+the existing macOS CI checks before release.
+
+# macOS validation — October 11, 2026
 
 Host: macOS, Apple Silicon. Pinned Snes9x commit: `fae2fea08f74180759ef540ee94259213f503480`. SDL 3.4.18 via Rust `sdl3` 0.20.0, statically linked.
 

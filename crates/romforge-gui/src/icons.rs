@@ -4,6 +4,41 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Modern ICNS artwork embeds PNGs; preview those without macOS's `sips`.
+pub fn icns_preview(path: &Path) -> Result<image::DynamicImage, String> {
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    if bytes.len() < 8
+        || bytes.len() > 32 * 1024 * 1024
+        || &bytes[..4] != b"icns"
+        || u32::from_be_bytes(bytes[4..8].try_into().unwrap()) as usize != bytes.len()
+    {
+        return Err("Invalid ICNS cover".into());
+    }
+    let mut offset = 8;
+    let mut best = None;
+    while offset + 8 <= bytes.len() {
+        let length = u32::from_be_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
+        if length < 8 || length > bytes.len() - offset {
+            return Err("Invalid ICNS element".into());
+        }
+        let data = &bytes[offset + 8..offset + length];
+        if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+            let image = image::load_from_memory(data).map_err(|e| e.to_string())?;
+            if best
+                .as_ref()
+                .is_none_or(|old: &image::DynamicImage| image.width() > old.width())
+            {
+                best = Some(image);
+            }
+        }
+        offset += length;
+    }
+    if offset != bytes.len() {
+        return Err("Truncated ICNS cover".into());
+    }
+    best.ok_or("This ICNS has no PNG image. Choose a PNG or JPEG cover.".into())
+}
+
 /// Normalize naming conventions, preserving meaningful parenthetical title text.
 pub fn key(title: &str) -> String {
     let mut title = title.to_lowercase();
@@ -183,6 +218,26 @@ impl Index {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn previews_embedded_png_and_rejects_truncated_icns() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("cover.icns");
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::new_rgba8(16, 16)
+            .write_to(&mut png, image::ImageFormat::Png)
+            .unwrap();
+        let png = png.into_inner();
+        let mut bytes = b"icns".to_vec();
+        bytes.extend(((16 + png.len()) as u32).to_be_bytes());
+        bytes.extend(b"icp4");
+        bytes.extend(((8 + png.len()) as u32).to_be_bytes());
+        bytes.extend(png);
+        std::fs::write(&path, &bytes).unwrap();
+        assert_eq!(icns_preview(&path).unwrap().width(), 16);
+        bytes.pop();
+        std::fs::write(&path, bytes).unwrap();
+        assert!(icns_preview(&path).is_err());
+    }
     #[test]
     fn normalizes_tags_articles_and_punctuation_without_losing_subtitles() {
         assert_eq!(

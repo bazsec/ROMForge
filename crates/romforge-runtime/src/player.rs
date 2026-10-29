@@ -345,10 +345,10 @@ pub fn play(
                         }
                         next_frame = Instant::now();
                     }
-                    Event::GamepadAdded { which, .. } => {
-                        if controller.as_ref().is_none_or(|c| !c.connected()) {
-                            controller = gamepads.open(which).ok();
-                        }
+                    Event::GamepadAdded { which, .. }
+                        if controller.as_ref().is_none_or(|c| !c.connected()) =>
+                    {
+                        controller = gamepads.open(which).ok();
                     }
                     Event::GamepadRemoved { .. }
                         if controller.as_ref().is_some_and(|c| !c.connected()) =>
@@ -613,6 +613,8 @@ pub fn play(
                 };
                 let footer = if menu.view == View::Keys {
                     "Left/Right: device  Enter: remap  Backspace: back"
+                } else if controller.as_ref().is_none_or(|c| !c.connected()) {
+                    "Arrows: move  Enter: select  Backspace: back"
                 } else if menu.view != View::Main {
                     "Circle: select  Cross / Backspace: back"
                 } else {

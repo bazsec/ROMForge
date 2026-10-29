@@ -17,6 +17,7 @@
 *.state
 *.sav
 *.app/
+*.romforge/
 .env
 .env.*
 *.pem

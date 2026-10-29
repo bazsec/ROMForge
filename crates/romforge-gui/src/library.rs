@@ -1,5 +1,7 @@
 use super::*;
-use romforge_format::{BuildInfo, Console, version_number};
+#[cfg(test)]
+use romforge_format::BuildInfo;
+use romforge_format::{Console, version_number};
 use std::{collections::BTreeSet, path::Path};
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -83,9 +85,7 @@ pub fn built_state(app: &Path) -> Built {
     if !app.exists() {
         return Built::Missing;
     }
-    if let Ok(bytes) = std::fs::read(app.join(romforge_format::BUILD_INFO))
-        && let Ok(info) = serde_json::from_slice::<BuildInfo>(&bytes)
-    {
+    if let Ok(info) = romforge_format::package_build_info(app) {
         return if version_number(&info.version)
             .zip(version_number(updater::VERSION))
             .is_some_and(|(old, new)| old < new)
@@ -145,7 +145,7 @@ pub fn inspect(
             if console(&rom).is_none() {
                 blocked = Some("unsupported console".into());
             }
-            let built = built_state(&output.join(format!("{title}.app")));
+            let built = built_state(&output.join(romforge_format::package_name(&title)));
             Entry {
                 rom,
                 size,

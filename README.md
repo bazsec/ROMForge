@@ -2,6 +2,15 @@
 
 A Rust desktop builder that packages user-provided retro ROMs as game applications.
 
+Windows development is now supported alongside macOS. ROMForge automatically
+uses the host platform: Windows builds one standalone `Game Title.exe` with an
+embedded artwork icon; macOS builds `.app` bundles. Linux packaging is not implemented yet.
+On Windows, run `powershell -ExecutionPolicy Bypass -File "Launch ROMForge.ps1"`
+from the checkout. This builds the pinned NES/SNES cores and native app, then opens
+the builder. Rust stable, Visual Studio C++ Build Tools with a Windows SDK, and
+CMake are required for development; the generated games do not need these tools.
+See [Windows development](docs/DEVELOPMENT.md#windows-development).
+
 [Download the latest macOS build](https://github.com/bazsec/ROMForge/releases/latest).
 
 The downloadable app runs on Apple Silicon Macs and includes the builder/runtime/core. No Rust, Xcode, or separate emulator installation is required to run it. It uses local ad-hoc signing and is not Apple-notarized; macOS may require Privacy & Security → Open Anyway after downloading. Intel Mac builds are not included.
@@ -39,7 +48,7 @@ For a PS5 DualSense, Cross/Circle/Square/Triangle map to SNES B/A/Y/X; Options i
 
 In **Keybinds**, Left/Right switches keyboard/controller bindings. Select a SNES control and press Enter/Circle, then press its new key/button or move a controller axis. Assigning a binding already in use swaps the two controls. F1, Escape, F11, and the controller menu shortcut remain reserved. Backspace goes back; F1 closes the menu, including during capture. Escape exits the game from gameplay or any menu, saving battery progress and settings. Five state slots are available per ROM. Saving replaces the chosen slot; loading checks the ROM, core version, size, and checksum before restoring. Slots persist outside the app alongside battery saves.
 
-Windows/Linux packaging and additional consoles remain planned. Current builds are for local noncommercial development using the Snes9x license. Bluetooth DualSense menu/input response was confirmed by the user; broader controller and game compatibility still need testing.
+Windows packaging is available from source; Linux packaging and additional consoles remain planned. Current builds are for local noncommercial development using the Snes9x license. Bluetooth DualSense menu/input response was confirmed by the user on macOS; broader controller and game compatibility still need testing.
 
 - [Architecture and feasibility](docs/ARCHITECTURE.md)
 - [Implementation milestones](docs/PLAN.md)

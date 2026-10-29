@@ -23,7 +23,16 @@ fn lock(path: &Path) -> Result<File> {
         .context("This game is already running. Close it before opening another copy.")?;
     Ok(file)
 }
-fn collection(exe: &Path) -> Option<&Path> {
+fn collection(exe: &Path, standalone: bool) -> Option<&Path> {
+    if standalone {
+        return exe.parent();
+    }
+    if exe.file_name()? == "Game.exe" {
+        let package = exe.parent()?;
+        if package.extension().is_some_and(|e| e == "romforge") {
+            return package.parent();
+        }
+    }
     let macos = exe.parent()?;
     let contents = macos.parent()?;
     let bundle = contents.parent()?;
@@ -41,7 +50,11 @@ pub fn open(title: &str, id: &str) -> Result<SaveLocation> {
         .context("user data directory unavailable")?;
     let legacy = project.data_local_dir().join("games").join(id);
     let exe = std::env::current_exe()?;
-    match collection(&exe) {
+    #[cfg(windows)]
+    let standalone = crate::windows_game::embedded();
+    #[cfg(not(windows))]
+    let standalone = false;
+    match collection(&exe, standalone) {
         Some(parent) => portable(&parent.join("Save Games"), title, id, &legacy)
             .context("Unable to use Save Games beside this app. Move the app collection to a writable folder and try again."),
         None => { fs::create_dir_all(&legacy)?; Ok(SaveLocation { _locks: vec![lock(&legacy)?], path: legacy }) }
@@ -137,11 +150,24 @@ mod tests {
     #[test]
     fn collection_path_is_outside_bundle() {
         assert_eq!(
-            collection(Path::new("/Games/Zelda.app/Contents/MacOS/Game")),
+            collection(Path::new("/Games/Zelda.romforge/Game.exe"), false),
+            Some(Path::new("/Games"))
+        );
+        assert_eq!(collection(Path::new("/target/debug/Game.exe"), false), None);
+        assert_eq!(
+            collection(Path::new("/Games/Super Metroid.exe"), true),
             Some(Path::new("/Games"))
         );
         assert_eq!(
-            collection(Path::new("/target/release/romforge-runtime")),
+            collection(Path::new("/Games/Renamed.exe"), true),
+            Some(Path::new("/Games"))
+        );
+        assert_eq!(
+            collection(Path::new("/Games/Zelda.app/Contents/MacOS/Game"), false),
+            Some(Path::new("/Games"))
+        );
+        assert_eq!(
+            collection(Path::new("/target/release/romforge-runtime"), false),
             None
         );
     }

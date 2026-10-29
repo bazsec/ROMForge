@@ -46,6 +46,9 @@ impl Forge {
                         .extension()
                         .is_some_and(|e| e.eq_ignore_ascii_case("icns"))
                     {
+                        if cfg!(windows) {
+                            return icons::icns_preview(path);
+                        }
                         let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
                         let png = temp.path().join("preview.png");
                         let result = Command::new("sips")
@@ -164,8 +167,9 @@ impl Forge {
     }
     fn updates_ui(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.label(format!(
-            "ROMForge {} · macOS Apple Silicon",
-            updater::VERSION.trim()
+            "ROMForge {} · {}",
+            updater::VERSION.trim(),
+            std::env::consts::OS
         ));
         if let Some(rx) = &self.update_job {
             match rx.try_recv() {
@@ -217,7 +221,7 @@ impl Forge {
             ui.hyperlink_to("Release notes", &release.html_url);
             if ui
                 .add_enabled(
-                    self.update_job.is_none() && self.job.is_none(),
+                    self.update_job.is_none() && self.job.is_none() && cfg!(target_os = "macos"),
                     egui::Button::new("Install update and restart"),
                 )
                 .clicked()
@@ -231,7 +235,9 @@ impl Forge {
             }
         }
         ui.label(&self.update_status);
-        ui.label("Updates preserve your folders and preferences. Builds are locally signed, not Apple-notarized.");
+        ui.label(if cfg!(windows) {
+            "Windows updates are installed manually from a Windows release."
+        } else { "Updates preserve your folders and preferences. Builds are locally signed, not Apple-notarized." });
     }
     pub fn settings_page(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().frame(egui::Frame::new().inner_margin(28).fill(Color32::from_rgb(20,22,27))).show(ctx, |ui| {
@@ -244,7 +250,7 @@ impl Forge {
                 self.updates_ui(ui,ctx);
                 ui.separator();
                 ui.heading("How to use ROMForge");
-                ui.label("Choose a ROM folder to load .nes, .sfc and .smc games, including subfolders. Extract ZIP archives first. Select a game, check its cover, then Build macOS app. You can also drop one ROM into the library to build it immediately.");
+                ui.label("Choose a ROM folder to load .nes, .sfc and .smc games, including subfolders. Extract ZIP archives first. Select a game, check its cover, then build a game for your system. You can also drop one ROM into the library to build it immediately.");
                 ui.label("Create all opens a review of the entire library, including games hidden by search. Existing apps are preserved unless you select Rebuild older apps; previous builds are retained in .romforge-backups. Cancel stops after the current game. Every new app receives an automatic headless launch check.");
                 ui.label("Cover matching searches subfolders, ignores region and revision tags, and uses the reviewed title aliases. Ambiguous matches need a manual selection. Refresh rescans both games and covers.");
                 if !self.icon_index.warnings.is_empty() { ui.colored_label(Color32::LIGHT_RED,format!("{} icon folders or entries could not be read.",self.icon_index.warnings.len())); for warning in &self.icon_index.warnings {ui.label(warning);} }

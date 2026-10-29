@@ -43,7 +43,7 @@ pub fn run(
             roms.len(),
             format!("Creating {} of {}: {title}", index + 1, roms.len()),
         );
-        if !replace && output.join(format!("{title}.app")).exists() {
+        if !replace && output.join(romforge_format::package_name(&title)).exists() {
             report.skipped += 1;
             report
                 .log
@@ -96,7 +96,11 @@ mod tests {
     #[test]
     fn skips_existing_and_continues_failures() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("old.app"), b"preserve").unwrap();
+        std::fs::write(
+            dir.path().join(romforge_format::package_name("old")),
+            b"preserve",
+        )
+        .unwrap();
         let report = run(
             &["old.sfc", "bad.sfc", "new.sfc"].map(PathBuf::from),
             dir.path(),
@@ -113,7 +117,7 @@ mod tests {
         );
         assert_eq!(report.summary(), "Finished: 1 created, 1 skipped, 1 failed");
         assert_eq!(
-            std::fs::read(dir.path().join("old.app")).unwrap(),
+            std::fs::read(dir.path().join(romforge_format::package_name("old"))).unwrap(),
             b"preserve"
         );
     }

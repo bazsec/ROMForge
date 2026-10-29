@@ -15,7 +15,11 @@ fn components(
         console.core_name(),
         std::env::consts::DLL_EXTENSION
     );
-    let contents = directory.parent().unwrap_or(directory);
+    let contents = if cfg!(windows) {
+        directory.join("Contents")
+    } else {
+        directory.parent().unwrap_or(directory).to_path_buf()
+    };
     let bundled = contents.join("Frameworks").join(&core_name);
     let core = if bundled.is_file() {
         bundled
@@ -46,9 +50,7 @@ fn replacement_allowed(app: &Path, rom: &Path) -> Result<(), String> {
     ) {
         return Err("Existing app is current or unrecognized; it was preserved.".into());
     }
-    let file = std::fs::File::open(app.join("Contents/Resources/game.romforge"))
-        .map_err(|e| e.to_string())?;
-    let payload = romforge_format::read(file)
+    let payload = romforge_format::package_payload(app)
         .map_err(|e| format!("Existing app could not be verified: {e}"))?;
     let bytes = std::fs::read(rom).map_err(|e| e.to_string())?;
     if Sha256::digest(&payload.rom) != Sha256::digest(&bytes) {
@@ -147,7 +149,7 @@ impl Forge {
                 let console = library::console(rom).ok_or("Unsupported console")?;
                 let (runtime, builder, core, license) = components(&root, console)?;
                 let title = rom.file_stem().unwrap_or_default().to_string_lossy();
-                let destination = output_dir.join(format!("{title}.app"));
+                let destination = output_dir.join(romforge_format::package_name(&title));
                 if destination.exists() {
                     if !replace {
                         return Err("Existing app preserved".into());
@@ -173,10 +175,13 @@ impl Forge {
                     .prefix(".romforge-checked-")
                     .tempdir_in(&output_dir)
                     .map_err(|e| e.to_string())?;
-                let app = staging.path().join(format!("{title}.app"));
+                let app = staging.path().join(romforge_format::package_name(&title));
                 let mut command = Command::new(builder);
                 command
-                    .arg("--macos")
+                    .arg(
+                        romforge_format::native_package_flag()
+                            .ok_or("Native packaging is not supported on this platform")?,
+                    )
                     .arg(runtime)
                     .arg(core)
                     .arg(license)
@@ -194,7 +199,7 @@ impl Forge {
                 if !output.status.success() {
                     return Err(log);
                 }
-                let check = Command::new(app.join("Contents/MacOS/Game"))
+                let check = Command::new(romforge_format::game_executable(&app))
                     .arg("--headless")
                     .output()
                     .map_err(|e| e.to_string())?;
@@ -205,6 +210,20 @@ impl Forge {
                     ));
                 }
                 log.push_str(&publish(&app, &destination, replace, rom, |path| {
+                    if cfg!(windows) {
+                        let check = Command::new(romforge_format::game_executable(path))
+                            .arg("--headless")
+                            .output()
+                            .map_err(|e| e.to_string())?;
+                        return if check.status.success() {
+                            Ok(())
+                        } else {
+                            Err(format!(
+                                "Launch check failed: {}",
+                                String::from_utf8_lossy(&check.stderr)
+                            ))
+                        };
+                    }
                     for (command, args) in [
                         ("/usr/bin/xattr", vec!["-cr"]),
                         ("/usr/bin/codesign", vec!["--verify", "--deep", "--strict"]),

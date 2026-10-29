@@ -85,6 +85,9 @@ fn quote(path: &std::path::Path) -> String {
 }
 /// Stage beside the installed app so the final rename stays on one filesystem.
 pub fn prepare(release: &Release) -> Result<PathBuf, String> {
+    if !cfg!(target_os = "macos") {
+        return Err("Automatic installation is currently available only on macOS. Download a Windows release manually.".into());
+    }
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let app = exe
         .ancestors()

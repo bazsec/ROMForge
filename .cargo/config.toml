@@ -1,0 +1,7 @@
+# Keep Windows packages portable; neither the game nor its SDL build needs the
+# Visual C++ redistributable installed on the player's machine.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[env]
+CMAKE_TOOLCHAIN_FILE = { value = ".cargo/native-toolchain.cmake", relative = true }
